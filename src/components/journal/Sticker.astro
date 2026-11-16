@@ -1,0 +1,6 @@
+---
+// A die-cut sticker: the drawing with a white edge. The drawings live in StickerSprite.astro.
+const { name, class: className = '' } = Astro.props as { name: string; class?: string };
+---
+
+<svg class={`st ${className}`} viewBox="0 0 48 48" aria-hidden="true"><use href={`#s-${name}`} class="cut" /><use href={`#s-${name}`} /></svg>

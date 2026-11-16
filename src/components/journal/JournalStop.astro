@@ -1,0 +1,75 @@
+---
+import { fmtDay, pad } from '../../lib/format';
+import { photoUrl } from '../../server/photos/photo-store';
+import type { JournalStop } from '../../lib/journal/stops';
+import Postmark from './Postmark.astro';
+import Sticker from './Sticker.astro';
+
+interface Props {
+  stop: JournalStop;
+  index: number;
+  total: number;
+  /** a sticker for this page, if it gets one */
+  sticker?: string;
+  /** where the stops sit on the little route sketch */
+  sketch: number[][];
+  codes: string[];
+}
+const { stop: s, index: si, total, sticker, sketch, codes } = Astro.props;
+---
+
+<section class="page" id={s.slug} data-stop={si} aria-labelledby={`stop-${si}`}>
+  {sticker && <Sticker name={sticker} class="on-page" />}
+  <div class="pg-top">
+    <div>
+      <span class="pg-day ink-small">Day {pad(s.dayNo)}</span>
+      <h2 id={`stop-${si}`}><em class="i">{s.name}</em></h2>
+      <span class="pg-when hand">{fmtDay.format(s.day)}</span>
+    </div>
+    <Postmark name={s.name} code={s.code} day={s.day} id={`pm-${si}`} />
+  </div>
+  <p class="story">{s.story}</p>
+
+  {s.groups.map((g) => (
+    <>
+      {g.label && <h3 class="day-label hand">{g.label}</h3>}
+      <div class="wall">
+        {g.tiles.map((t, ti) => (
+          <button class="tile" style={`--ratio:${t.photo.width / t.photo.height};--r:${t.tilt}deg;--n:${ti}`} data-i={t.i} data-stop={si}
+            data-ratio={t.photo.width / t.photo.height} data-full={photoUrl(t.photo.id, 'full')} data-label={t.label}
+            aria-label={`Open ${s.name}, photo ${t.i + 1}`}>
+            {ti % 3 === 0 && <span class="tape"></span>}
+            <img src={photoUrl(t.photo.id, 'tile')} srcset={`${photoUrl(t.photo.id, 'thumb')} 240w, ${photoUrl(t.photo.id, 'tile')} 800w`}
+              sizes="(max-width: 959px) 92vw, 520px" width={t.photo.width} height={t.photo.height} alt="" loading="lazy" decoding="async" />
+          </button>
+        ))}
+      </div>
+    </>
+  ))}
+
+  {/* Cards the masonry script clones into leftover space at the bottom of each wall */}
+  <template data-fill="stamp">
+    <div class="filler f-stamp" aria-hidden="true">
+      <span class="stamp-wrap"><span class="stamp"><span class="f-stamp-in"><b>{s.code}</b><span class="hand">{s.name}</span></span></span></span>
+    </div>
+  </template>
+  {total > 1 && (
+    <template data-fill="map">
+      <div class="filler f-map" aria-hidden="true">
+        <small>Stop {si + 1} of {total}</small>
+        <svg viewBox="0 0 200 110" preserveAspectRatio="xMidYMid meet">
+          <path class="sk-route" d={`M${sketch.map((p) => p.join(' ')).join(' L')}`} />
+          {sketch.map(([x, y], i) => (
+            <>
+              <circle cx={x} cy={y} r={i === si ? 7 : 4} class={i === si ? 'here' : undefined} />
+              <text x={x} y={y + 18} text-anchor="middle" class={i === si ? 'here' : undefined}>{codes[i]}</text>
+            </>
+          ))}
+        </svg>
+      </div>
+    </template>
+  )}
+  {s.notes.map((note) => (
+    <template data-fill="note"><div class="filler f-note"><span class="tape"></span><p class="hand">{note}</p></div></template>
+  ))}
+</section>

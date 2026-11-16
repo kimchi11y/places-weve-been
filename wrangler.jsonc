@@ -1,0 +1,25 @@
+// The Worker that serves the site. `npm run dev` simulates all of this locally (in .wrangler/),
+// so no Cloudflare account is needed until you deploy.
+{
+  "name": "places-weve-been",
+  "main": "@astrojs/cloudflare/entrypoints/server",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  // Trips, stops and stories. Create it with `npx wrangler d1 create places-weve-been`,
+  // then add the "database_id" it prints below "database_name".
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "places-weve-been",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // The resized photos. Create it with `npx wrangler r2 bucket create places-weve-been-photos`. Keep it private.
+  "r2_buckets": [
+    {
+      "binding": "PHOTOS",
+      "bucket_name": "places-weve-been-photos"
+    }
+  ]
+}

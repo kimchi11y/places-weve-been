@@ -1,0 +1,128 @@
+---
+import { marked } from 'marked';
+import Icon from '../../components/journal/Icon.astro';
+import JournalCover from '../../components/journal/JournalCover.astro';
+import JournalStop from '../../components/journal/JournalStop.astro';
+import PhotoViewer from '../../components/journal/PhotoViewer.astro';
+import Recap from '../../components/journal/Recap.astro';
+import Sticker from '../../components/journal/Sticker.astro';
+import Layout from '../../layouts/Layout.astro';
+import { numericId } from '../../lib/countries';
+import { daysBetween, plural } from '../../lib/format';
+import { inkStyle } from '../../lib/ink';
+import { journalStops, routeSketch } from '../../lib/journal/stops';
+import type { RouteData } from '../../lib/journal/route-map';
+import { coverPhoto, postcardPhotos } from '../../lib/trips';
+import { photoUrl } from '../../server/photos/photo-store';
+import { tripStore } from '../../server/runtime';
+import '../../styles/journal.css';
+
+const store = tripStore();
+const trip = await store.getTrip(Astro.params.id!);
+if (!trip || trip.draft) return new Response('Not found', { status: 404 });
+
+const story = trip.story.trim() ? await marked.parse(trip.story) : '';
+const youtubeId = trip.vlog?.match(/(?:youtu\.be\/|v=|embed\/)([\w-]{11})/)?.[1];
+const stops = journalStops(trip);
+const days = daysBetween(trip.startDate, trip.endDate);
+const photoCount = stops.reduce((n, s) => n + s.total, 0);
+
+// The cover first, then one photo from each of the other stops, so the pile shows the trip's range
+const cover = coverPhoto(trip);
+const others = stops.flatMap((s) => s.photos.slice(0, 1)).concat(stops.flatMap((s) => s.photos));
+const pile = [...new Map([cover, ...others].filter((p) => !!p).map((p) => [p.id, p])).values()].slice(0, 3);
+const lastStop = trip.stops.at(-1)!;
+
+const route: RouteData = {
+  countries: trip.countries.map(numericId),
+  stops: trip.stops.map((s) => {
+    const photo = postcardPhotos(s)[0];
+    return { name: s.name, lng: s.lng, lat: s.lat, thumb: photo && photoUrl(photo.id, 'thumb') };
+  }),
+};
+const sketch = routeSketch(trip.stops);
+const codes = trip.stops.map((s) => s.code);
+const STICKERS = ['cam', 'shades', 'flower', 'heart'];
+
+// The next journal along, older trips first, coming round again at the end
+const all = await store.listTrips();
+const next = all.length > 1 ? all[(all.findIndex((t) => t.id === trip.id) + 1) % all.length] : null;
+
+const legText = (i: number) => {
+  const gap = Math.round((+stops[i].day - +stops[i - 1].day) / 86_400_000);
+  return gap > 0 ? `${plural(gap, 'day')} later…` : 'later that day…';
+};
+---
+
+<Layout title={`${trip.title} · Places we’ve been`} description={trip.summary}>
+  <article id="journal" style={inkStyle(trip.id)}>
+    <a class="go back" href="/" data-back aria-label="Back to the globe"><Icon name="back" /></a>
+
+    <JournalCover title={trip.title} startDate={trip.startDate} endDate={trip.endDate} summary={trip.summary}
+      days={days} places={stops.length} photoCount={photoCount} pile={pile} firstStop={stops[0].name}
+      lastStop={{ code: lastStop.code, photo: postcardPhotos(lastStop)[0] }} />
+
+    <nav class="ribbon" aria-label="Stops on this trip">
+      <a class="rb-back" href="/" data-back aria-label="Back to the globe"><Icon name="back" /></a>
+      <div class="rb-scroll"><div class="rb-line">
+        <div class="rb-track"></div><div class="rb-done"></div>
+        {stops.map((s, si) => <a href={`#${s.slug}`} data-stop={si} aria-label={`${s.name}, stop ${si + 1}`}><i></i>{s.code}</a>)}
+        <div class="rb-plane"><Sticker name="plane" /></div>
+      </div></div>
+    </nav>
+
+    {(story || youtubeId) && (
+      <section class="j-story">
+        {story && <div class="prose" set:html={story} />}
+        {youtubeId && (
+          <div class="vlog">
+            <h2>The <em class="i">vlog</em></h2>
+            <div class="print"><iframe src={`https://www.youtube-nocookie.com/embed/${youtubeId}`} title={`${trip.title} vlog`} loading="lazy"
+              allow="accelerometer; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
+          </div>
+        )}
+      </section>
+    )}
+
+    <main class="j-body">
+      <section class="routecard" aria-label="Route map">
+        <h2>The <em class="i">route</em></h2>
+        <div class="map" data-route={JSON.stringify(route)}></div>
+      </section>
+      <div class="pages">
+        {stops.map((s, si) => (
+          <>
+            {si > 0 && <div class="leg hand" aria-hidden="true"><Sticker name="plane" />{legText(si)}</div>}
+            <JournalStop stop={s} index={si} total={stops.length} sticker={si % 2 ? undefined : STICKERS[(si / 2) % STICKERS.length]} sketch={sketch} codes={codes} />
+          </>
+        ))}
+        <section class="fin">
+          <Sticker name="sun" class="seal" />
+          <h2>That was <em class="i">{trip.title}</em></h2>
+          <Recap days={days} places={stops.length} photos={photoCount} />
+          <div class="fin-go">
+            {next && (
+              <a class="cta" href={`/trips/${next.id}`}><span><small>Next journal</small>{next.title}</span><span class="arrow"><Icon name="arrow" /></span></a>
+            )}
+            <a class="ghost" href="/" data-back><Icon name="globe" /> Back to the globe</a>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <PhotoViewer stops={stops} />
+  </article>
+</Layout>
+
+<script>
+  import { startMasonry } from '../../lib/journal/masonry';
+  import { startProgress } from '../../lib/journal/progress';
+  import { startViewer } from '../../lib/journal/viewer';
+
+  const article = document.querySelector<HTMLElement>('#journal')!;
+  startMasonry(article.querySelector('.pages')!);
+  startViewer(article);
+  startProgress(article);
+  // The walls just changed height, so a link to one stop needs aiming again
+  if (location.hash) document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
+</script>

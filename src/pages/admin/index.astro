@@ -1,0 +1,21 @@
+---
+// The trip editor. Only people listed in EDITORS get here (src/middleware.ts).
+import Editor from '../../admin/Editor';
+import '../../styles/tokens.css';
+import '../../admin/editor.css';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Caveat:wght@500;700&family=Fraunces:ital,opsz,wght,SOFT,WONK@1,9..144,500..700,100,1&display=swap" rel="stylesheet" />
+    <title>Trip editor</title>
+  </head>
+  <body>
+    <Editor client:only="react" />
+  </body>
+</html>

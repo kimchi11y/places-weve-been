@@ -1,0 +1,42 @@
+---
+import Layout from '../layouts/Layout.astro';
+import GlobeExplorer from '../components/GlobeExplorer';
+import { loadTrips, tripStats } from '../lib/trips';
+import { tripStore } from '../server/runtime';
+import '../styles/home.css';
+
+const trips = await loadTrips(tripStore());
+const opening = trips.slice(0, 3).map((t) => t.cover.tile);
+---
+
+<Layout title="Places we’ve been">
+  {opening.length > 0 && (
+    <div id="intro" hidden aria-hidden="true">
+      <div class="env">
+        <div class="env-back"></div>
+        {opening.map((src) => <div class="print out"><img data-src={src} alt="" /></div>)}
+        <div class="env-flap"></div>
+        <div class="env-front"></div>
+      </div>
+    </div>
+  )}
+  {/* Inline so the envelope is up before the first paint. It only plays on a first visit, and a tap skips it. */}
+  <script is:inline>
+    (function () {
+      var box = document.getElementById('intro');
+      var opened = null;
+      try { opened = localStorage.getItem('atlas-opened'); } catch (e) {}
+      if (!box || opened || location.search.indexOf('trip=') >= 0 || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      box.querySelectorAll('img').forEach(function (img) { img.src = img.dataset.src; });
+      box.hidden = false;
+      function done() {
+        box.remove();
+        try { localStorage.setItem('atlas-opened', '1'); } catch (e) {}
+      }
+      box.onclick = done;
+      box.onanimationend = function (e) { if (e.animationName === 'introOut') done(); };
+      setTimeout(done, 2800);
+    })();
+  </script>
+  <GlobeExplorer client:load trips={trips} stats={tripStats(trips)} />
+</Layout>

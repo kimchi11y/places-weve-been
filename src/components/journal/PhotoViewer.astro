@@ -1,0 +1,23 @@
+---
+import Icon from './Icon.astro';
+
+const { stops } = Astro.props as { stops: { name: string; first: number; total: number }[] };
+---
+
+<dialog class="lb" aria-label="Photo viewer">
+  <div class="lb-top">
+    <span class="lb-where hand" aria-live="polite"></span>
+    <span class="lb-count"></span>
+    <button class="lb-x" aria-label="Close"><Icon name="x" /></button>
+  </div>
+  <div class="lb-stage"><div class="lb-print"><img alt="" /></div></div>
+  <div class="lb-foot">
+    <button class="go prev" aria-label="Previous photo"><Icon name="back" /></button>
+    <div class="lb-track">
+      {stops.map((s) => (
+        <button style={`--w:${s.total}`} data-first={s.first} aria-label={`Jump to ${s.name}`}><span>{s.name}</span><i></i></button>
+      ))}
+    </div>
+    <button class="go next" aria-label="Next photo"><Icon name="arrow" /></button>
+  </div>
+</dialog>

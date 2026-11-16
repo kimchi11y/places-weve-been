@@ -1,0 +1,11 @@
+---
+import Icon from './Icon.astro';
+
+const { days, places, photos } = Astro.props as { days: number; places: number; photos: number };
+---
+
+<div class="recap">
+  <div><Icon name="cal" /><b>{days}</b><span>{days === 1 ? 'Day' : 'Days'}</span></div>
+  <div><Icon name="pin" /><b>{places}</b><span>{places === 1 ? 'Place' : 'Places'}</span></div>
+  <div><Icon name="img" /><b>{photos}</b><span>{photos === 1 ? 'Photo' : 'Photos'}</span></div>
+</div>

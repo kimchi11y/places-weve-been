@@ -1,0 +1,6 @@
+---
+// The drawings live in StickerSprite.astro.
+const { name } = Astro.props as { name: string };
+---
+
+<svg class="ic" aria-hidden="true"><use href={`#i-${name}`} /></svg>

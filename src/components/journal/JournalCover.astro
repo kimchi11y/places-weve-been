@@ -1,0 +1,42 @@
+---
+import { fmtDay, parseDay, plural } from '../../lib/format';
+import type { PhotoRow } from '../../schema/trip';
+import { photoUrl } from '../../server/photos/photo-store';
+import Recap from './Recap.astro';
+import Sticker from './Sticker.astro';
+
+interface Props {
+  title: string;
+  startDate: string;
+  endDate: string;
+  summary: string;
+  days: number;
+  places: number;
+  photoCount: number;
+  /** up to three prints, the cover first */
+  pile: PhotoRow[];
+  firstStop: string;
+  lastStop: { code: string; photo?: PhotoRow };
+}
+const { title, startDate, endDate, summary, days, places, photoCount, pile, firstStop, lastStop } = Astro.props;
+---
+
+<header class="cover">
+  <div class="pile" aria-hidden="true">
+    <div class="pile-back"></div>
+    {pile[1] && <div class="print p2"><img src={photoUrl(pile[1].id, 'tile')} alt="" /></div>}
+    {pile[0] && <div class="print p1"><img class="vt-cover" src={photoUrl(pile[0].id, 'tile')} alt="" fetchpriority="high" /></div>}
+    {pile[2] && <div class="print p3"><img src={photoUrl(pile[2].id, 'tile')} alt="" /></div>}
+    <div class="pile-env"><Sticker name="plane" /></div>
+    <div class="tag hand">{firstStop} ♡</div>
+    {lastStop.photo && (
+      <div class="stamp-wrap"><div class="stamp"><div class="stamp-face"><img src={photoUrl(lastStop.photo.id, 'thumb')} alt="" /><b>{lastStop.code}</b></div></div></div>
+    )}
+  </div>
+  <div>
+    <h1>{plural(days, 'day')} in <em class="i">{title}</em></h1>
+    <span class="c-dates hand">{fmtDay.format(parseDay(startDate))} → {fmtDay.format(parseDay(endDate))}</span>
+    <p class="c-sum">{summary}</p>
+    <Recap days={days} places={places} photos={photoCount} />
+  </div>
+</header>
