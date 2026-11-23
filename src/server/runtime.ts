@@ -1,25 +1,18 @@
-/**
- * The stores and sign-in this deployment uses. On Cloudflare (and in `npm run dev`, which
- * simulates it) that's D1, R2 and Cloudflare Access, set up in wrangler.jsonc and the
- * Worker's settings. A Docker build would swap this one file.
- */
-import { env } from 'cloudflare:workers';
-import { cloudflareAccessAuth } from './auth/cloudflare-access';
+/** The stores and sign-in this deployment uses; `#platform` is where it runs (platform/). */
+import { settings } from '#platform';
+import { chooseAuth } from './auth/choose';
 import { devAuth, editorList, type Auth } from './auth/viewer';
-import { r2PhotoStore } from './photos/r2';
-import { d1TripStore } from './stores/d1';
 
-export const tripStore = () => d1TripStore(env.DB);
-export const photoStore = () => r2PhotoStore(env.PHOTOS);
+export { photoStore, tripStore } from '#platform';
 
-let access: Auth | null | undefined;
+let chosen: Auth | null | undefined;
 
 /** How visitors sign in; null when the deployment isn't set up for it yet. */
 export function auth(): Auth | null {
   if (import.meta.env.DEV) return devAuth;
-  access ??= env.ACCESS_TEAM_DOMAIN && env.ACCESS_AUD ? cloudflareAccessAuth(env.ACCESS_TEAM_DOMAIN, env.ACCESS_AUD) : null;
-  return access;
+  chosen ??= chooseAuth(settings);
+  return chosen;
 }
 
 /** Who may use the editor: the EDITORS setting, a comma-separated list of emails. Anyone in `npm run dev`. */
-export const canEdit = import.meta.env.DEV ? () => true : editorList(env.EDITORS ?? '');
+export const canEdit = import.meta.env.DEV ? () => true : editorList(settings.EDITORS ?? '');
