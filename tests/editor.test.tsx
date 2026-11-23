@@ -245,6 +245,24 @@ describe('keeping edits safe', () => {
   });
 });
 
+describe('odd answers', () => {
+  it('explains a page that came back instead of data, such as a sign-in page', async () => {
+    routes['GET /trips'] = () => new Response('<h1>Sign in</h1>');
+    render(<Editor />);
+    expect(await screen.findByText(/unexpected answer/)).toBeTruthy();
+    expect(button('+ New trip')).toBeTruthy();
+  });
+
+  it('keeps what was typed when a save gets one', async () => {
+    routes['PUT /trips/jeju'] = () => new Response('<h1>Sign in</h1>');
+    const { user } = await setup('Jeju');
+    await user.type(title(), '!');
+    await user.click(button('Save'));
+    expect(await screen.findByText(/unexpected answer/)).toBeTruthy();
+    expect(title().value).toBe('Jeju!');
+  });
+});
+
 describe('labels', () => {
   it('doesn’t remove a country when its label is clicked', async () => {
     const { user } = await setup('Jeju');

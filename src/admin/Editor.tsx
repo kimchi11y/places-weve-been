@@ -18,9 +18,13 @@ async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   headers.set('x-places-weve-been', '1');
   if (typeof init.body === 'string') headers.set('content-type', 'application/json');
   const res = await fetch(API + path, { ...init, headers });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError(data.error ?? `Something went wrong (${res.status})`, data.errors ?? []);
-  return data;
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new ApiError(data.error ?? `Something went wrong (${res.status})`, data.errors ?? []);
+  }
+  return res.json().catch(() => {
+    throw new ApiError('The server sent an unexpected answer. You may need to sign in again in another tab.');
+  });
 }
 
 /** A stop as the form edits it. `id` is missing until a new stop is first saved. */
