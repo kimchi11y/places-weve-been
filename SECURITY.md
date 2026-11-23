@@ -10,9 +10,9 @@ You'll get a reply within a week. Once it's fixed, the fix and a short note go o
 
 ## What counts
 
-- Seeing a trip or photo without passing Cloudflare Access (or whichever sign-in a deployment uses)
+- Seeing a trip or photo without passing Cloudflare Access or Tailscale (whichever sign-in a deployment uses), or passing as someone else
 - Using `/admin` or its API without being listed in `EDITORS`
 - A photo reaching storage or the site with its location or other camera details still in it
 - Anything that lets one person's site read another's data
 
-Problems in Cloudflare itself go to [Cloudflare](https://www.cloudflare.com/disclosure/).
+Problems in Cloudflare itself go to [Cloudflare](https://www.cloudflare.com/disclosure/), and in Tailscale itself to [Tailscale](https://tailscale.com/security).

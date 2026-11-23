@@ -1,6 +1,6 @@
 # Places We've Been
 
-A private travel scrapbook for your family: a paper globe of every trip, with journals, stories and vlogs. You host it yourself on Cloudflare's free plan, and only the people you list can see it.
+A private travel scrapbook for your family: a paper globe of every trip, with journals, stories and vlogs. You host it yourself, on Cloudflare's free plan or [your own server](docs/self-hosting.md), and only the people you let in can see it.
 
 ![The globe on the home page, with a sticker for each trip](docs/screenshots/home-desktop.png)
 
@@ -21,7 +21,7 @@ npm test
 
 ## How it works
 
-The site runs as a Cloudflare Worker. Each page is made when someone visits, from:
+The site runs as a Cloudflare Worker, or [in Docker on your own server](docs/self-hosting.md) with a SQLite file and a folder of photos. On Cloudflare, each page is made when someone visits, from:
 
 - **D1** (Cloudflare's SQLite database): trips, stops and stories
 - **R2** (Cloudflare's file storage): the photos, resized and with their GPS location removed
@@ -94,7 +94,7 @@ If something is missing or mistyped (a wrong country code, an end date before th
 
 ## Deploying
 
-The site runs on Cloudflare's free plan. You'll need a Cloudflare account and your copy of this repository on GitHub.
+The site runs on Cloudflare's free plan. (Have your own server? See [self-hosting with Docker and Tailscale](docs/self-hosting.md).) You'll need a Cloudflare account and your copy of this repository on GitHub.
 
 ### 1. Create the database and photo storage
 
@@ -152,13 +152,13 @@ The site checks the signed token Access attaches to every visit, so someone who 
 | | Cost | What family do | Notes |
 |---|---|---|---|
 | **Cloudflare Access** (above) | Free up to 50 people | Type their email, get a code | Recommended |
-| **Tailscale** | Free | Install an app | Very private, more setup for each person. Suits a home server more than Cloudflare |
+| **[Docker and Tailscale](docs/self-hosting.md)** | Your server | Install an app | Very private, more setup for each person, and the backups are up to you |
 
 Places We've Been is made for sharing privately with family and friends. Want a public site? Fork it and make it yours.
 
 ## Backups
 
-Your trips and photos live only on Cloudflare, not in this repository, so keep your own copy:
+Your trips and photos live only on Cloudflare, not in this repository, so keep your own copy. (With Docker, see [its own backups](docs/self-hosting.md#backups).)
 
 ```sh
 npm run backup                           # into ./backups (git ignores it)
@@ -183,7 +183,8 @@ If you ever need to put a backup back online, add `--remote`. It **replaces ever
 | `src/schema/trip.ts` | What the editor may save, and the messages it shows when something's wrong (Zod) |
 | `src/server/stores/` | Where trips are kept: D1 on Cloudflare, or a SQLite file (Docker, tests) |
 | `src/server/photos/` | Where photo files are kept: R2 on Cloudflare, or a folder (Docker, tests) |
-| `src/server/auth/` | Who is looking at the site: Cloudflare Access, or a local stand-in for `npm run dev` |
+| `src/server/auth/` | Who is looking at the site: Cloudflare Access, Tailscale, or a local stand-in for `npm run dev` |
+| `src/server/platform/` | Where the site runs: Cloudflare, or Node for Docker |
 | `src/server/runtime.ts` | Which stores and sign-in this deployment uses |
 | `src/middleware.ts` | Who may see the site and who may edit, checked on every request |
 | `src/pages/` | The globe and journals (`index.astro`), the trip pages and the photo files (`photos/`) |
@@ -195,7 +196,8 @@ If you ever need to put a backup back online, add `--remote`. It **replaces ever
 | `src/pages/admin/api/` | What the editor saves through |
 | `src/styles/` | Colours, fonts and shared pieces (`tokens.css`), the home page (`home.css`), the trip page (`journal.css`) |
 | `migrations/` | Database changes. After changing `tables.ts`, run `npm run db:generate <name>` |
-| `scripts/` | `npm run seed`, `npm run backup`, `npm run restore` |
+| `scripts/` | `npm run seed`, `npm run backup`, `npm run restore`, and what Docker's backups run (`self-hosted/`) |
+| `Dockerfile`, `compose.yaml`, `docker/` | [Self-hosting](docs/self-hosting.md) |
 | `seed/trips/` | The example trips, loaded by `npm run seed` |
 | `tests/` | `npm test` |
 

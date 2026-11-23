@@ -2,7 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { copyPhotos, exportData, importData, photoKeys } from '../src/server/backup';
+import { copyPhotos, exportData, importData, missingFiles, photoKeys, replaceAll } from '../src/server/backup';
 import { localFolderPhotoStore } from '../src/server/photos/local-folder';
 import { stops } from '../src/schema/tables';
 import { photoKey } from '../src/server/photos/photo-store';
@@ -83,5 +83,43 @@ describe('photo backups', () => {
 
     await live.put(photoKey('p1', 'tile'), new Uint8Array([6]), 'image/webp');
     expect(await copyPhotos(live, saved, [photoKey('p1', 'thumb'), photoKey('p1', 'tile')], { skipExisting: true })).toEqual({ copied: 1, skipped: 1, missing: [] });
+  });
+});
+
+describe('putting a backup back', () => {
+  async function site() {
+    const from = await filled();
+    const saved = localFolderPhotoStore(path.join(dir, 'saved'));
+    const live = localFolderPhotoStore(path.join(dir, 'live'));
+    for (const key of photoKeys(['p1'])) await saved.put(key, new Uint8Array([1]), 'image/webp');
+    // a site with something else on it
+    const db = await openSqliteFile(':memory:');
+    const store = createSqliteTripStore(db);
+    const trip = await store.createTrip({ ...jeju, title: 'Old' });
+    const { trip: old } = await store.saveTrip(trip.id, { ...jeju, title: 'Old', draft: true, stops: [stop] });
+    await store.addPhoto(trip.id, old.stops[0].id, { id: 'old', fileName: 'o.jpg', takenAt: null, width: 1, height: 1 });
+    for (const key of photoKeys(['old'])) await live.put(key, new Uint8Array([9]), 'image/webp');
+    return { backup: await exportData(from.db), saved, live, db, store };
+  }
+
+  it('replaces trips and photos, and clears out the old files', async () => {
+    const { backup, saved, live, db, store } = await site();
+    expect(await replaceAll({ db, photos: live, saved, backup })).toEqual({ copied: 4, removed: 4 });
+    expect((await store.listTrips({ drafts: true })).map((t) => t.title)).toEqual(['Jeju']);
+    expect(await missingFiles(live, photoKeys(['p1']))).toEqual([]);
+    expect(await missingFiles(live, photoKeys(['old']))).toHaveLength(4);
+  });
+
+  it('keeps the old trips and files when the backup can’t be read', async () => {
+    const { backup, saved, live, db, store } = await site();
+    await expect(replaceAll({ db, photos: live, saved, backup: { ...backup, version: 2 as 1 } })).rejects.toThrow('version 2');
+    expect((await store.listTrips({ drafts: true })).map((t) => t.title)).toEqual(['Old']);
+    expect(await missingFiles(live, photoKeys(['old']))).toEqual([]);
+  });
+
+  it('notices missing files', async () => {
+    const { saved } = await site();
+    await saved.delete([photoKey('p1', 'card')]);
+    expect(await missingFiles(saved, photoKeys(['p1']))).toEqual([photoKey('p1', 'card')]);
   });
 });

@@ -1,11 +1,11 @@
-// Fails the build if any image in dist/ still carries GPS coordinates.
+// Fails the build if any image in dist/ (or the folder it's given) still carries GPS coordinates.
 // Phone photos record where they were taken, including at home. Trip photos live in R2
 // and lose their location when they're added; this catches one dropped into public/.
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import exifr from 'exifr';
 
-const dist = path.resolve('dist');
+const dist = path.resolve(process.argv[2] ?? 'dist');
 const images = (await readdir(dist, { recursive: true })).filter((f) => /\.(jpe?g|png|webp|avif|heic|tiff?)$/i.test(f));
 
 const leaks = [];

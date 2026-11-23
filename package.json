@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build && node scripts/check-photo-privacy.mjs",
+    "build:node": "TARGET=node astro build && vite build --config scripts/self-hosted/vite.config.ts && node scripts/check-photo-privacy.mjs dist-node",
+    "start:node": "node dist-node/server/entry.mjs",
     "preview": "astro preview",
     "check": "astro check",
     "test": "vitest run",
@@ -18,6 +20,7 @@
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.4.3",
+    "@astrojs/node": "^11.1.14",
     "@astrojs/react": "^7.1.1",
     "@libsql/client": "^0.18.0",
     "astro": "^7.4.13",
