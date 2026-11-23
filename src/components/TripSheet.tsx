@@ -24,9 +24,9 @@ export default function TripSheet({ trip, stop, picker, onStop, onPick, onClose 
   const open = !!trip || !!picker;
 
   // Keep the last trip on screen while the sheet slides away
-  const lastTrip = useRef(trip);
-  if (trip) lastTrip.current = trip;
-  const shown = trip ?? lastTrip.current;
+  const [lastTrip, setLastTrip] = useState(trip);
+  if (trip && trip !== lastTrip) setLastTrip(trip);
+  const shown = trip ?? lastTrip;
 
   useEffect(() => setPhoto(0), [trip, stop]);
 
