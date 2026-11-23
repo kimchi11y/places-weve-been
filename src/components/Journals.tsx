@@ -25,7 +25,7 @@ const otherPhoto = (t: Trip) => t.stops.flatMap((s) => s.photos).find((p) => p.s
 
 const carryCover = (e: MouseEvent<HTMLAnchorElement>) => carryPhoto(e.currentTarget.querySelector<HTMLElement>('[data-carry]'));
 
-export default forwardRef<HTMLElement, { trips: Trip[] }>(function Journals({ trips }, ref) {
+export default forwardRef<HTMLElement, { trips: Trip[]; canEdit: boolean }>(function Journals({ trips, canEdit }, ref) {
   const [country, setCountry] = useState<string | null>(null);
   const countries = useMemo(() => countriesOf(trips), [trips]);
   const list = country ? trips.filter((t) => t.countries.includes(country)) : trips;
@@ -76,7 +76,7 @@ export default forwardRef<HTMLElement, { trips: Trip[] }>(function Journals({ tr
         ) : (
           <div className="no-trips">
             <Sticker name="cam" />
-            <p className="hand">No trips here yet. The first one starts in the <a href="/admin">trip editor</a>.</p>
+            <p className="hand">No trips here yet.{canEdit && <> The first one starts in the <a href="/admin">trip editor</a>.</>}</p>
           </div>
         )}
       </div>

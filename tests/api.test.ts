@@ -9,7 +9,7 @@ import { sqliteFileTripStore } from '../src/server/stores/sqlite-file';
 import type { TripStore } from '../src/server/stores/trip-store';
 
 const site = vi.hoisted(() => ({}) as { trips: TripStore; photos: PhotoStore });
-vi.mock('../src/server/runtime', () => ({ tripStore: () => site.trips, photoStore: () => site.photos }));
+vi.mock('../src/server/runtime', () => ({ canEdit: (viewer: { email: string } | null) => viewer?.email === 'ana@example.com', tripStore: () => site.trips, photoStore: () => site.photos }));
 import { DELETE as deletePhoto } from '../src/pages/admin/api/photos/[id]';
 import { DELETE as deleteTrip, GET as getTrip, PUT as putTrip } from '../src/pages/admin/api/trips/[id]';
 import { POST as postPhoto } from '../src/pages/admin/api/trips/[id]/photos';
@@ -170,7 +170,7 @@ describe('adding photos', () => {
 });
 
 describe('serving photos', () => {
-  const serve = async (key: string) => (await servePhoto({ params: { key } } as never)) as Response;
+  const serve = async (key: string, email = 'ana@example.com') => (await servePhoto({ params: { key }, locals: { viewer: { email } } } as never)) as Response;
 
   it('serves a photo, cached privately', async () => {
     await site.photos.put(photoKey('p1', 'thumb'), await webp(), 'image/webp');
@@ -178,6 +178,21 @@ describe('serving photos', () => {
     expect(response.headers.get('content-type')).toBe('image/webp');
     expect(response.headers.get('cache-control')).toContain('private');
     expect((await response.arrayBuffer()).byteLength).toBe(Number(response.headers.get('content-length')));
+  });
+
+  it('shows family a photo only while its trip is on the site', async () => {
+    const family = 'grandma@example.com';
+    const { id, stopId } = await tripWithStop();
+    const { data: photo } = await upload(id, stopId);
+    const publish = (draft: boolean) => site.trips.saveTrip(id, { ...jeju, draft, stops: [{ ...stop, id: stopId }] });
+    for (const size of SIZES) expect((await serve(`${photo.id}/${size}`, family)).status).toBe(404);
+    expect((await serve(`${photo.id}/full`)).status).toBe(200); // the editor still shows it
+    await publish(false);
+    expect((await serve(`${photo.id}/full`, family)).status).toBe(200);
+    await publish(true);
+    const hidden = await serve(`${photo.id}/full`, family);
+    expect([hidden.status, hidden.headers.get('cache-control')]).toEqual([404, null]);
+    expect((await serve('no-such-photo/full', family)).status).toBe(404);
   });
 
   it('answers 404 for missing photos and invalid keys', async () => {

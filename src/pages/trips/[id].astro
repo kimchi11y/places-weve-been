@@ -1,5 +1,4 @@
 ---
-import { marked } from 'marked';
 import Icon from '../../components/journal/Icon.astro';
 import JournalCover from '../../components/journal/JournalCover.astro';
 import JournalStop from '../../components/journal/JournalStop.astro';
@@ -12,6 +11,7 @@ import { daysBetween, plural } from '../../lib/format';
 import { inkStyle } from '../../lib/ink';
 import { journalStops, routeSketch } from '../../lib/journal/stops';
 import type { RouteData } from '../../lib/journal/route-map';
+import { storyHtml } from '../../lib/story';
 import { coverPhoto, postcardPhotos } from '../../lib/trips';
 import { photoUrl } from '../../server/photos/photo-store';
 import { tripStore } from '../../server/runtime';
@@ -21,7 +21,7 @@ const store = tripStore();
 const trip = await store.getTrip(Astro.params.id!);
 if (!trip || trip.draft) return new Response('Not found', { status: 404 });
 
-const story = trip.story.trim() ? await marked.parse(trip.story) : '';
+const story = await storyHtml(trip.story);
 const youtubeId = trip.vlog?.match(/(?:youtu\.be\/|v=|embed\/)([\w-]{11})/)?.[1];
 const stops = journalStops(trip);
 const days = daysBetween(trip.startDate, trip.endDate);

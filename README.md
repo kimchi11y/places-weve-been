@@ -152,8 +152,9 @@ The site checks the signed token Access attaches to every visit, so someone who 
 | | Cost | What family do | Notes |
 |---|---|---|---|
 | **Cloudflare Access** (above) | Free up to 50 people | Type their email, get a code | Recommended |
-| **Public** | Free | Nothing | Run `npx wrangler secret put PUBLIC_SITE` with `true` and anyone with the link sees the trips. The editor still needs Access |
 | **Tailscale** | Free | Install an app | Very private, more setup for each person. Suits a home server more than Cloudflare |
+
+Places We've Been is made for sharing privately with family and friends. Want a public site? Fork it and make it yours.
 
 ## Backups
 

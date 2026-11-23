@@ -12,6 +12,7 @@ const WORDS = [['been', '#D23F2B'], ['wandered', '#2A7A4B'], ['got lost', '#7A3F
 interface Props {
   trips: Trip[];
   stats: Stats;
+  canEdit: boolean;
 }
 
 /** The trip a URL asks for: every open trip has its own address, so the Back button just works. */
@@ -20,7 +21,7 @@ const tripInUrl = (trips: Trip[]) => {
   return trips.find((t) => t.id === id) ?? null;
 };
 
-export default function GlobeExplorer({ trips, stats }: Props) {
+export default function GlobeExplorer({ trips, stats, canEdit }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const pinsRef = useRef<HTMLDivElement>(null);
@@ -214,7 +215,7 @@ export default function GlobeExplorer({ trips, stats }: Props) {
           </div>
           <div className="floater f-sun" aria-hidden="true"><Sticker name="sun" /></div>
         </section>
-        <Journals ref={shelfRef} trips={trips} />
+        <Journals ref={shelfRef} trips={trips} canEdit={canEdit} />
       </main>
 
       <nav className="tabs" aria-label="Main">

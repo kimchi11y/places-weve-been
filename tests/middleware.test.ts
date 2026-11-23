@@ -3,13 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const site = vi.hoisted(() => ({
   viewer: null as { email: string } | null,
   signIn: true,
-  open: false,
 }));
 vi.mock('astro:middleware', () => ({ defineMiddleware: (handler: unknown) => handler }));
 vi.mock('../src/server/runtime', () => ({
   auth: () => (site.signIn ? { viewer: async () => site.viewer } : null),
   canEdit: (viewer: { email: string } | null) => viewer?.email === 'ana@example.com',
-  isPublic: () => site.open,
 }));
 import { onRequest } from '../src/middleware';
 
@@ -21,7 +19,7 @@ async function visit(path: string, { method = 'GET', headers = {} as Record<stri
   return { status: response.status, body: await response.text(), let: next.mock.calls.length === 1, locals };
 }
 
-beforeEach(() => Object.assign(site, { viewer: null, signIn: true, open: false }));
+beforeEach(() => Object.assign(site, { viewer: null, signIn: true }));
 
 describe('who gets in', () => {
   it('keeps everything closed until sign-in is set up', async () => {
@@ -51,15 +49,10 @@ describe('who gets in', () => {
     expect(await visit('/admin/api/trips')).toMatchObject({ status: 200, let: true });
   });
 
-  it('opens the trips, never the editor, when the site is public', async () => {
-    site.open = true;
-    expect(await visit('/')).toMatchObject({ status: 200, let: true });
-    expect(await visit('/administrator')).toMatchObject({ status: 200, let: true }); // only looks like the editor
-    expect(await visit('/admin')).toMatchObject({ status: 403, let: false });
-    expect(await visit('/admin/api/trips', { method: 'POST', headers: { 'x-places-weve-been': '1' } })).toMatchObject({ status: 403, let: false });
-    site.signIn = false;
-    expect(await visit('/')).toMatchObject({ status: 200, let: true });
-    expect(await visit('/admin')).toMatchObject({ status: 503, let: false });
+  it('only treats /admin and what’s under it as the editor', async () => {
+    site.viewer = { email: 'grandma@example.com' };
+    expect(await visit('/administrator')).toMatchObject({ status: 200, let: true });
+    expect(await visit('/admin?x=1')).toMatchObject({ status: 403, let: false });
   });
 
   it('escapes the email it shows', async () => {
