@@ -74,7 +74,7 @@ docker compose pull tailscale
 docker compose up -d --build
 ```
 
-The database is brought up to date when the site starts.
+The database is brought up to date when the site starts. Read the [release notes](https://github.com/kimchi11y/places-weve-been/releases) first, and [get told about new ones](../README.md#updating).
 
 ## Move to or from Cloudflare
 
