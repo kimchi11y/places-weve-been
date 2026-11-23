@@ -68,6 +68,15 @@ describe('search palette', () => {
     expect(screen.getAllByRole('option')).toHaveLength(2);
   });
 
+  it('doesn’t steal focus when closed straight away', async () => {
+    const { show } = setup(false);
+    show(true);
+    const focus = vi.spyOn(input(), 'focus');
+    show(false);
+    await new Promise((done) => setTimeout(done, 60));
+    expect(focus).not.toHaveBeenCalled();
+  });
+
   it('turns the globe toward whatever is highlighted', async () => {
     const { user, onPeek } = setup();
     expect(onPeek).toHaveBeenLastCalledWith(trips[0]);

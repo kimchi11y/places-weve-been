@@ -20,7 +20,7 @@ export default function TripSheet({ trip, stop, picker, onStop, onPick, onClose 
   const sheetRef = useRef<HTMLElement>(null);
   const photoRef = useRef<HTMLImageElement>(null);
   const opener = useRef<Element | null>(null);
-  const [photo, setPhoto] = useState(0);
+  const [turned, setTurned] = useState({ trip, stop, photo: 0 });
   const open = !!trip || !!picker;
 
   // Keep the last trip on screen while the sheet slides away
@@ -28,7 +28,8 @@ export default function TripSheet({ trip, stop, picker, onStop, onPick, onClose 
   if (trip && trip !== lastTrip) setLastTrip(trip);
   const shown = trip ?? lastTrip;
 
-  useEffect(() => setPhoto(0), [trip, stop]);
+  // Each stop starts at its first photo
+  const photo = turned.trip === shown && turned.stop === stop ? turned.photo : 0;
 
   useEffect(() => {
     if (open) {
@@ -101,7 +102,7 @@ export default function TripSheet({ trip, stop, picker, onStop, onPick, onClose 
                 <h2 className="sh-title"><em className="i">{shown.title}</em></h2>
                 <p>{shown.summary}</p>
               </div>
-              <button className="print sh-print" onClick={() => setPhoto((p) => p + 1)} disabled={photos.length < 2}
+              <button className="print sh-print" onClick={() => setTurned({ trip: shown, stop, photo: photo + 1 })} disabled={photos.length < 2}
                 aria-label={photos.length > 1 ? `Next photo of ${current?.name}` : `${current?.name}`}>
                 <span className="tape" />
                 <img ref={photoRef} src={here?.tile} alt="" />

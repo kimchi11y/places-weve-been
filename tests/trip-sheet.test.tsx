@@ -39,6 +39,17 @@ describe('trip sheet', () => {
     expect(photo()).toBe('/Seogwipo-1/tile');
   });
 
+  it('never shows the old photo number at a new stop, not even for a moment', async () => {
+    const { user, show } = setup({ trip: jeju });
+    await user.click(nextPhoto());
+    const seen: (string | null)[] = [];
+    const img = document.querySelector('.sh-print img')!;
+    const set = img.setAttribute.bind(img);
+    img.setAttribute = (name, value) => { if (name === 'src') seen.push(value); set(name, value); };
+    show({ trip: jeju, stop: 1 });
+    expect(seen).toEqual(['/Seongsan-1/tile']);
+  });
+
   it('keeps focus on the photo when the arrow keys change stop', () => {
     const { show } = setup({ trip: jeju });
     nextPhoto().focus();

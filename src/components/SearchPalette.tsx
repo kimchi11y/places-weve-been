@@ -42,11 +42,20 @@ export default function SearchPalette({ trips, open, onClose, onPick, onPeek }: 
   }, [trips, query]);
   const current = hits[Math.min(sel, hits.length - 1)];
 
+  // Start over each time it opens, even if it's still fading out from the last time
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      setQuery('');
+      setSel(0);
+    }
+  }
+
   useEffect(() => {
     if (!open) return;
-    setQuery('');
-    setSel(0);
-    setTimeout(() => inputRef.current?.focus(), 30);
+    const timer = setTimeout(() => inputRef.current?.focus(), 30);
+    return () => clearTimeout(timer);
   }, [open]);
 
   // turn the globe toward whatever is highlighted
