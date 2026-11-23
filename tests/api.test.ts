@@ -88,6 +88,16 @@ describe('trip routes', () => {
     expect(JSON.stringify(data)).not.toContain('secret');
   });
 
+  it('still answers with the saved trip when old files can’t be deleted', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { id, stopId } = await tripWithStop();
+    await upload(id, stopId);
+    vi.spyOn(site.photos, 'delete').mockRejectedValue(new Error('R2 is down'));
+    expect(await call(putTrip, { id }, JSON.stringify({ ...jeju, draft: true, stops: [] }))).toMatchObject({ status: 200, data: { stops: [] } });
+    expect((await call(deleteTrip, { id })).status).toBe(200);
+    expect(log).toHaveBeenCalled();
+  });
+
   it('deletes a removed stop’s photo files', async () => {
     const { id, stopId } = await tripWithStop();
     const { data: photo } = await upload(id, stopId);
@@ -130,6 +140,24 @@ describe('adding photos', () => {
     const limit = 20 * 1024 * 1024;
     expect((await upload(id, stopId, { files: { full: new Uint8Array(limit + 1) } })).data.error).toContain('too big');
     expect((await upload(id, stopId, { files: { full: new Uint8Array(limit) } })).data.error).not.toContain('too big');
+  });
+
+  it('leaves no files behind when storing one size fails', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { id, stopId } = await tripWithStop();
+    const { put } = site.photos;
+    const keys: string[] = [];
+    vi.spyOn(site.photos, 'put').mockImplementation(async (key, bytes, type) => {
+      keys.push(key);
+      if (key.endsWith('/thumb')) throw new Error('R2 is down');
+      await new Promise((done) => setTimeout(done, 20)); // the others finish after the failure
+      await put(key, bytes, type);
+    });
+    expect((await upload(id, stopId)).status).toBe(500);
+    await new Promise((done) => setTimeout(done, 60));
+    expect(keys).toHaveLength(SIZES.length);
+    for (const key of keys) expect(await site.photos.get(key)).toBeNull();
+    expect((await site.trips.getTrip(id))!.stops[0].photos).toEqual([]);
   });
 
   it('leaves no files behind when the stop is gone', async () => {
