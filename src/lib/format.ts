@@ -15,10 +15,11 @@ export const parseDay = (day: string) => new Date(`${day.slice(0, 10)}T00:00:00Z
 /** Counting both the first and the last day. */
 export const daysBetween = (start: string, end: string) => Math.round((+parseDay(end) - +parseDay(start)) / DAY) + 1;
 
-/** "18 – 27 Sep 2025", or "29 Sep – 3 Oct 2025" */
+/** "18 – 27 Sep 2025", "29 Sep – 3 Oct 2025", or "3 Apr 2025" for a single day */
 export function dateRange(startDay: string, endDay: string) {
   const start = parseDay(startDay);
   const end = parseDay(endDay);
+  if (+start === +end) return `${fmtShort.format(end)} ${end.getUTCFullYear()}`;
   const sameMonth = start.getUTCMonth() === end.getUTCMonth() && start.getUTCFullYear() === end.getUTCFullYear();
   const from = sameMonth ? String(start.getUTCDate()) : fmtShort.format(start);
   return `${from} – ${fmtShort.format(end)} ${end.getUTCFullYear()}`;
