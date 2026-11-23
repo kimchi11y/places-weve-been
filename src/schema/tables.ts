@@ -45,7 +45,7 @@ export const stops = sqliteTable(
     lng: real('lng').notNull(),
     date: text('date').notNull(),
     story: text('story').notNull(),
-    /** one-liners, shown as handwritten notes between the photos */
+    /** no longer used: handwritten notes, kept so nobody's are deleted */
     notes: text('notes', { mode: 'json' }).$type<string[]>().notNull().default([]),
     ...timestamps,
   },

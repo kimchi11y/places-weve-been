@@ -129,9 +129,6 @@
 .f-map circle.here { fill: var(--t); stroke: var(--white); stroke-width: 2.5; }
 .f-map text { font: 700 9px var(--sans); fill: var(--ink-soft); }
 .f-map text.here { font-size: 11px; fill: var(--ink); }
-.f-note { align-items: flex-start; padding: 26px 16px 16px; text-align: left; background: var(--tint) repeating-linear-gradient(transparent 0 27px, color-mix(in srgb, var(--t) 22%, transparent) 27px 28px); overflow: visible; }
-.f-note .tape { top: -6px; left: 50%; translate: -50% 0; rotate: -4deg; width: 64px; height: 20px; }
-.f-note p { font-size: clamp(22px, 2vw, 26px); line-height: 1.05; rotate: -1.5deg; overflow-wrap: anywhere; }
 
 .leg { display: flex; align-items: center; justify-content: center; gap: 10px; height: 74px; font-size: 24px; line-height: 1; color: var(--ink-soft); }
 .leg::before, .leg::after { content: ""; flex: 0 1 62px; border-top: 2px dashed var(--line); }

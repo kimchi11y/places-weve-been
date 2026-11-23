@@ -45,12 +45,8 @@ export const stopInput = createInsertSchema(stops, {
   lng: z.number({ error: 'The map position looks wrong.' }).min(-180).max(180),
   date: day,
   story: required('Every stop needs a few words of story.'),
-  notes: z
-    .array(z.string().trim())
-    .default([])
-    .transform((notes) => notes.filter(Boolean)),
 })
-  .omit({ tripId: true, position: true, createdAt: true, updatedAt: true })
+  .omit({ tripId: true, position: true, notes: true, createdAt: true, updatedAt: true })
   .extend({
     /** missing for a stop added in the editor since the trip was loaded */
     id: z.string().optional(),

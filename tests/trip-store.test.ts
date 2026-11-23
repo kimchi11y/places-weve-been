@@ -1,6 +1,9 @@
+import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { stops } from '../src/schema/tables';
 import { ValidationError, type TripInput, type TripRecord } from '../src/schema/trip';
-import { sqliteFileTripStore } from '../src/server/stores/sqlite-file';
+import { createSqliteTripStore } from '../src/server/stores/sqlite';
+import { openSqliteFile, sqliteFileTripStore } from '../src/server/stores/sqlite-file';
 import type { TripStore } from '../src/server/stores/trip-store';
 
 const jeju = { title: 'Jeju Island', startDate: '2025-04-03', endDate: '2025-04-08', countries: ['kr'], summary: 'Slow island days.' };
@@ -52,14 +55,25 @@ describe('trips', () => {
   it('saves stops in order and tidies what was typed', async () => {
     const trip = await store.createTrip(jeju);
     const { trip: saved } = await store.saveTrip(trip.id, edit(trip, [
-      stop('Jeju City', { notes: ['  Tangerines! ', ''] }),
+      stop('Jeju City', { story: '  Tangerines! ' }),
       stop('Seogwipo', { code: 'SGP', date: '2025-04-07' }),
     ], { vlog: '' }));
-    expect(saved.stops.map((s) => [s.position, s.name, s.code, s.notes])).toEqual([
-      [0, 'Jeju City', 'CJU', ['Tangerines!']],
-      [1, 'Seogwipo', 'SGP', []],
+    expect(saved.stops.map((s) => [s.position, s.name, s.code, s.story])).toEqual([
+      [0, 'Jeju City', 'CJU', 'Tangerines!'],
+      [1, 'Seogwipo', 'SGP', 'Black pork barbecue.'],
     ]);
     expect(saved.vlog).toBeNull();
+  });
+
+  it('leaves old handwritten notes as they were', async () => {
+    const db = await openSqliteFile(':memory:');
+    store = createSqliteTripStore(db);
+    const trip = await store.createTrip(jeju);
+    const { trip: saved } = await store.saveTrip(trip.id, edit(trip, [stop('Jeju City')]));
+    const id = saved.stops[0].id;
+    await db.update(stops).set({ notes: ['Tangerines!'] }).where(eq(stops.id, id));
+    const { trip: again } = await store.saveTrip(trip.id, edit(trip, [{ ...stop('Jeju-si'), id }, stop('Seogwipo')]));
+    expect(again.stops.map((s) => [s.name, s.notes])).toEqual([['Jeju-si', ['Tangerines!']], ['Seogwipo', []]]);
   });
 
   it('rejects stops with the same name', async () => {

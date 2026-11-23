@@ -28,7 +28,7 @@ async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 /** A stop as the form edits it. `id` is missing until a new stop is first saved. */
-type EditStop = Pick<StopRow, 'name' | 'code' | 'lat' | 'lng' | 'date' | 'story' | 'notes'> & {
+type EditStop = Pick<StopRow, 'name' | 'code' | 'lat' | 'lng' | 'date' | 'story'> & {
   id?: string;
   /** React's key: the id, or a temporary one for a new stop */
   key: string;
@@ -65,14 +65,14 @@ const fromRecord = (t: TripRecord): EditTrip => ({
 const toInput = (t: EditTrip): TripInput => ({
   title: t.title, startDate: t.startDate, endDate: t.endDate, countries: t.countries, summary: t.summary,
   story: t.story, vlog: t.vlog, draft: t.draft, coverPhotoId: t.coverPhotoId,
-  stops: t.stops.map(({ id, name, code, lat, lng, date, story, notes, postcard }) => ({ id, name, code, lat, lng, date, story, notes, postcard })),
+  stops: t.stops.map(({ id, name, code, lat, lng, date, story, postcard }) => ({ id, name, code, lat, lng, date, story, postcard })),
 });
 
 /** What gets saved: everything except the photos, which are uploaded and deleted straight away. */
 const saveable = (t: EditTrip | null) => (t ? JSON.stringify(toInput(t)) : '');
 
 const blankStop = (date: string): EditStop => ({
-  key: crypto.randomUUID(), name: '', code: '', lat: 0, lng: 0, date, story: '', notes: [], postcard: [], photos: [],
+  key: crypto.randomUUID(), name: '', code: '', lat: 0, lng: 0, date, story: '', postcard: [], photos: [],
 });
 
 interface Country { code: string; name: string }

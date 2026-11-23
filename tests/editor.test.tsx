@@ -76,17 +76,6 @@ describe('trip editor', () => {
     expect(button('Save').disabled).toBe(true);
   });
 
-  it('keeps a stop’s handwritten notes, though they can’t be edited here', async () => {
-    trips[0].stops[0].notes = ['Tangerines!'];
-    let sent: { stops: { notes: string[] }[] } | undefined;
-    routes['PUT /trips/jeju'] = (init) => { sent = JSON.parse(init.body as string); return Response.json(trips[0]); };
-    const { user } = await setup('Jeju');
-    expect(screen.queryByText('Handwritten notes')).toBeNull();
-    await user.type(title(), '!');
-    await user.click(button('Save'));
-    expect(sent!.stops[0].notes).toEqual(['Tangerines!']);
-  });
-
   it('undoes unsaved changes', async () => {
     const { user } = await setup('Jeju');
     await user.type(title(), '!');
