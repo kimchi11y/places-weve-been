@@ -23,6 +23,3 @@ export function auth(): Auth | null {
 
 /** Who may use the editor: the EDITORS setting, a comma-separated list of emails. Anyone in `npm run dev`. */
 export const canEdit = import.meta.env.DEV ? () => true : editorList(env.EDITORS ?? '');
-
-/** PUBLIC_SITE=true lets anyone see the trips without signing in. The editor always needs it. */
-export const isPublic = () => env.PUBLIC_SITE === 'true';

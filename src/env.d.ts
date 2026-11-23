@@ -11,8 +11,6 @@ declare module 'cloudflare:workers' {
     ACCESS_AUD?: string;
     /** emails allowed to use the editor, comma-separated */
     EDITORS?: string;
-    /** "true" to show the trips to anyone, without signing in */
-    PUBLIC_SITE?: string;
   };
 }
 
