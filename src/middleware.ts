@@ -20,7 +20,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const forEditor = pathname === '/admin' || pathname.startsWith('/admin/');
   const signIn = auth();
   if (!signIn) {
-    return refuse(503, 'This site isn’t set up for signing in yet. See “Deploying” in the README: it needs ACCESS_TEAM_DOMAIN and ACCESS_AUD.');
+    return refuse(503, 'This site isn’t set up for signing in yet. See the README for the settings it needs.');
   }
 
   const viewer = await signIn.viewer(context.request);
