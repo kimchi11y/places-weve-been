@@ -9,6 +9,7 @@ import { slugify } from '../lib/slug';
 import { photos, stops, trips } from './tables';
 
 const day = z.iso.date({ error: 'Dates look like 2025-04-03.' });
+const unique = (values: string[]) => [...new Set(values)];
 const required = (message: string) => z.string().trim().min(1, message);
 
 const tripFields = createInsertSchema(trips, {
@@ -21,7 +22,8 @@ const tripFields = createInsertSchema(trips, {
         error: (issue) => `Unknown country code ${issue.input}.`,
       }),
     )
-    .min(1, 'Pick at least one country.'),
+    .min(1, 'Pick at least one country.')
+    .transform(unique),
   summary: required('The trip needs a short summary.'),
   story: z.string().trim().default(''),
   vlog: z
@@ -53,7 +55,7 @@ export const stopInput = createInsertSchema(stops, {
     /** missing for a stop added in the editor since the trip was loaded */
     id: z.string().optional(),
     /** photo ids picked for the postcard, in order; otherwise the first three are used */
-    postcard: z.array(z.string()).max(3, 'A postcard has room for 3 photos.').default([]),
+    postcard: z.array(z.string()).max(3, 'A postcard has room for 3 photos.').default([]).transform(unique),
   });
 
 /** A whole trip, as the editor saves it. */
@@ -69,6 +71,10 @@ export const tripInput = tripFields
       if (!slug) ctx.addIssue({ code: 'custom', path: ['stops', i, 'name'], message: `Stop ${i + 1} needs a name.` });
       else if (seen.has(slug)) ctx.addIssue({ code: 'custom', path: ['stops', i, 'name'], message: `Two stops are called "${s.name}".` });
       seen.add(slug);
+      // Drafts may be half finished; a published stop outside the trip would show as "Day 0" or "Day 2000".
+      if (!t.draft && (s.date < t.startDate || s.date > t.endDate)) {
+        ctx.addIssue({ code: 'custom', path: ['stops', i, 'date'], message: `${s.name}: the arrival date is outside the trip.` });
+      }
     });
     if (!t.draft && !t.stops.length) {
       ctx.addIssue({ code: 'custom', path: ['stops'], message: 'Add at least one stop before publishing, or keep it as a draft.' });

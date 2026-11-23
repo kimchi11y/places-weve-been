@@ -61,6 +61,16 @@ describe('trips', () => {
     ]);
   });
 
+  it('rejects the same stop sent twice, instead of losing one', async () => {
+    const trip = await store.createTrip(jeju);
+    const { trip: saved } = await store.saveTrip(trip.id, edit(trip, [stop('Jeju City')]));
+    const id = saved.stops[0].id;
+    expect(await errorsOf(store.saveTrip(trip.id, edit(trip, [{ ...stop('Jeju City'), id }, { ...stop('Seogwipo'), id }])))).toEqual([
+      'Seogwipo: this stop is in the trip twice. Reload and try again.',
+    ]);
+    expect((await store.getTrip(trip.id))!.stops.map((s) => s.name)).toEqual(['Jeju City']);
+  });
+
   it('only publishes trips whose stops all have photos', async () => {
     const trip = await store.createTrip(jeju);
     expect(await errorsOf(store.saveTrip(trip.id, edit(trip, [], { draft: false })))).toEqual([

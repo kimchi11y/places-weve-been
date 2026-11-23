@@ -32,6 +32,21 @@ describe('what the editor may send', () => {
     expect(ok({ countries: [] })).toBe(false);
   });
 
+  it('keeps each country and postcard photo once', () => {
+    expect(tripInput.parse({ ...trip, countries: ['KR', ' kr', 'JP'] }).countries).toEqual(['KR', 'JP']);
+    expect(newTripInput.parse({ ...trip, countries: ['jp', 'JP'] }).countries).toEqual(['JP']);
+    expect(tripInput.parse({ ...trip, stops: [{ ...stop, postcard: ['a', 'b', 'a'] }] }).stops[0].postcard).toEqual(['a', 'b']);
+  });
+
+  it('wants stops within the trip’s dates, once it’s published', () => {
+    const published = { draft: false };
+    for (const date of ['2025-04-03', '2025-04-08']) expect(ok({ ...published, stops: [{ ...stop, date }] })).toBe(true);
+    for (const date of ['2025-04-02', '2025-04-09', '2031-01-01']) {
+      expect(ok({ ...published, stops: [{ ...stop, date }] })).toBe(false);
+      expect(ok({ stops: [{ ...stop, date }] })).toBe(true); // a draft can still be moved around
+    }
+  });
+
   it('checks photo details', () => {
     const photo = { fileName: 'a.jpg', takenAt: null, width: 1, height: 20_000 };
     const photoOk = (extra: object) => photoUpload.safeParse({ ...photo, ...extra }).success;

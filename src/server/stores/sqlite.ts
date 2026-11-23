@@ -88,9 +88,12 @@ export function createSqliteTripStore(db: AtlasDb): TripStore {
       const current = await mustGet(id);
       const known = new Map(current.stops.map((s) => [s.id, s]));
       const errors: string[] = [];
+      const sent = new Set<string>();
 
       const planned = input.stops.map((s, position) => {
         if (s.id && !known.has(s.id)) errors.push(`${s.name}: this stop was deleted elsewhere. Reload and try again.`);
+        if (s.id && sent.has(s.id)) errors.push(`${s.name}: this stop is in the trip twice. Reload and try again.`);
+        if (s.id) sent.add(s.id);
         const existing = s.id ? known.get(s.id) : undefined;
         const own = new Set(existing?.photos.map((p) => p.id));
         for (const p of s.postcard) if (!own.has(p)) errors.push(`${s.name}: a postcard photo isn't in this stop any more.`);
