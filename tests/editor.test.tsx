@@ -244,3 +244,26 @@ describe('keeping edits safe', () => {
     expect(screen.queryByRole('heading', { name: 'New trip' })).toBeNull();
   });
 });
+
+describe('labels', () => {
+  it('doesn’t remove a country when its label is clicked', async () => {
+    const { user } = await setup('Jeju');
+    await user.click(screen.getByText('Countries'));
+    expect(screen.getByText('South Korea')).toBeTruthy();
+    expect(screen.getByText('Japan')).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'Countries' })).toBeTruthy();
+  });
+
+  it('adds and removes countries by name', async () => {
+    const { user } = await setup('Jeju');
+    await user.click(button('Remove Japan'));
+    expect(screen.queryByText('Japan')).toBeNull();
+    fireEvent.change(screen.getByRole('combobox', { name: 'Add a country' }), { target: { value: 'Vietnam (VN)' } });
+    expect(button('Remove Vietnam')).toBeTruthy();
+  });
+
+  it('names the story box', async () => {
+    await setup('Jeju');
+    expect(screen.getByRole('textbox', { name: 'The full story' })).toBeTruthy();
+  });
+});

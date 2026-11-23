@@ -338,7 +338,7 @@ function TripForm({ trip, countries, edit, onUpload, onDeletePhoto, onRemoveStop
           <Field label="Last day">
             <input type="date" value={trip.endDate} onChange={(e) => edit((t) => void (t.endDate = e.target.value))} />
           </Field>
-          <Field label="Countries" wide>
+          <Field label="Countries" group wide>
             <CountryPicker countries={countries} value={trip.countries} onChange={(v) => edit((t) => void (t.countries = v))} />
           </Field>
           <Field label="Summary" hint="One or two sentences, shown on the globe." wide>
@@ -370,9 +370,9 @@ function TripForm({ trip, countries, edit, onUpload, onDeletePhoto, onRemoveStop
       </button>
 
       <section className="card">
-        <h2>The full story</h2>
+        <h2 id="full-story">The full story</h2>
         <p className="hint">Shown on the trip page. Blank lines start new paragraphs; **bold** and [links](https://…) work too.</p>
-        <textarea className="story" rows={10} value={trip.story} onChange={(e) => edit((t) => void (t.story = e.target.value))} />
+        <textarea className="story" aria-labelledby="full-story" rows={10} value={trip.story} onChange={(e) => edit((t) => void (t.story = e.target.value))} />
       </section>
     </div>
   );
@@ -491,13 +491,15 @@ function StopCard({ index, count, trip, stop, edit, onMove, onRemove, onUpload, 
 
 // ---------- small inputs ----------
 
-function Field({ label, hint, wide, children }: { label: string; hint?: ReactNode; wide?: boolean; children: ReactNode }) {
+/** `group` is for several controls under one label: a <label> would pass clicks on to the first of them. */
+function Field({ label, hint, wide, group, children }: { label: string; hint?: ReactNode; wide?: boolean; group?: boolean; children: ReactNode }) {
+  const Box = group ? 'div' : 'label';
   return (
-    <label className={`field${wide ? ' wide' : ''}`}>
+    <Box className={`field${wide ? ' wide' : ''}`} {...(group && { role: 'group', 'aria-label': label })}>
       <span className="label">{label}</span>
       {children}
       {hint && <span className="hint">{hint}</span>}
-    </label>
+    </Box>
   );
 }
 
@@ -529,11 +531,12 @@ function CountryPicker({ countries, value, onChange }: { countries: Country[]; v
       {value.map((code) => (
         <span key={code} className="chip">
           {nameOf(code)}
-          <button type="button" title="Remove" onClick={() => onChange(value.filter((c) => c !== code))}>×</button>
+          <button type="button" title="Remove" aria-label={`Remove ${nameOf(code)}`} onClick={() => onChange(value.filter((c) => c !== code))}>×</button>
         </span>
       ))}
       <input
         list="country-list"
+        aria-label="Add a country"
         value={text}
         placeholder={value.length ? 'Add another…' : 'Start typing a country…'}
         onChange={(e) => choose(e.target.value)}
@@ -561,14 +564,14 @@ function NewTrip({ countries, onCreate, onCancel }: {
         <Field label="Title" wide><input required value={t.title} placeholder="e.g. Vietnam" onChange={(e) => set({ title: e.target.value })} /></Field>
         <Field label="First day"><input required type="date" value={t.startDate} onChange={(e) => set({ startDate: e.target.value, endDate: t.endDate || e.target.value })} /></Field>
         <Field label="Last day"><input required type="date" value={t.endDate} onChange={(e) => set({ endDate: e.target.value })} /></Field>
-        <Field label="Countries" wide><CountryPicker countries={countries} value={t.countries} onChange={(v) => set({ countries: v })} /></Field>
+        <Field label="Countries" group wide><CountryPicker countries={countries} value={t.countries} onChange={(v) => set({ countries: v })} /></Field>
         <Field label="Summary" hint="One or two sentences, shown on the globe." wide>
           <textarea required rows={2} value={t.summary} onChange={(e) => set({ summary: e.target.value })} />
         </Field>
       </div>
       <div className="form-actions">
         <button type="button" className="btn" onClick={onCancel}>Cancel</button>
-        <button className="btn primary">Create trip</button>
+        <button type="submit" className="btn primary">Create trip</button>
       </div>
     </form>
   );
