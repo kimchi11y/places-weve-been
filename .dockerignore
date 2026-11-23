@@ -1,0 +1,11 @@
+# Only what the build needs goes in. Above all, no settings and nobody's trips or photos.
+*
+!package.json
+!package-lock.json
+!astro.config.mjs
+!tsconfig.json
+!src
+!public
+!migrations
+!scripts/check-photo-privacy.mjs
+**/.DS_Store
