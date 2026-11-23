@@ -40,6 +40,7 @@ describe('Cloudflare Access sign-in', () => {
     expect(await auth.viewer(request(await sign({ email: 'ana@example.com' }, { expires: '-1m' })))).toBeNull();
     expect(await cloudflareAccessAuth(TEAM, 'another-app').viewer(request(await sign({ email: 'ana@example.com' })))).toBeNull();
     expect(await auth.viewer(request('not-a-token'))).toBeNull();
+    expect(await auth.viewer(request(await sign({ sub: 'no email claim' })))).toBeNull();
   });
 });
 
