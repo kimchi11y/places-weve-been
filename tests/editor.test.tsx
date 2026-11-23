@@ -54,6 +54,14 @@ async function setup(open?: string) {
 }
 const link = (title: string) => within(screen.getByRole('navigation')).getByRole('button', { name: new RegExp(title) });
 const title = () => screen.getByRole<HTMLInputElement>('textbox', { name: 'Title' });
+const isLocked = (el: Element) => !!el.closest('[inert]');
+/** A route that answers only when the test says so. */
+function slow(key: string) {
+  let answer!: (response: Response) => void;
+  const response = new Promise<Response>((done) => { answer = done; });
+  routes[key] = () => response;
+  return (data: unknown) => act(async () => answer(Response.json(data)));
+}
 const button = (name: string | RegExp) => screen.getByRole<HTMLButtonElement>('button', { name });
 
 describe('trip editor', () => {
@@ -162,5 +170,77 @@ describe('trip editor', () => {
     fireEvent.submit(container.querySelector('form')!);
     await waitFor(() => expect(screen.getByText(/^Trip created as a draft/)).toBeTruthy());
     expect(screen.getByRole('heading', { level: 2, name: 'New one' })).toBeTruthy();
+  });
+});
+
+describe('keeping edits safe', () => {
+  it('locks the form and the trip list while saving, so nothing typed is lost', async () => {
+    const { user } = await setup('Jeju');
+    const answer = slow('PUT /trips/jeju');
+    await user.type(title(), '!');
+    await user.click(button('Save'));
+    expect([isLocked(title()), isLocked(link('Hanoi'))]).toEqual([true, true]);
+    await answer(record('jeju', 'Jeju!'));
+    expect([isLocked(title()), isLocked(link('Hanoi'))]).toEqual([false, false]);
+  });
+
+  it('unlocks when a save fails', async () => {
+    routes['PUT /trips/jeju'] = () => { throw new Error('Offline'); };
+    const { user } = await setup('Jeju');
+    await user.type(title(), '!');
+    await user.click(button('Save'));
+    expect(await screen.findByText('Offline')).toBeTruthy();
+    expect(isLocked(title())).toBe(false);
+    expect(title().value).toBe('Jeju!');
+  });
+
+  it('locks the form while another trip loads', async () => {
+    const { user } = await setup('Jeju');
+    const answer = slow('GET /trips/hanoi');
+    await user.click(link('Hanoi'));
+    expect(isLocked(title())).toBe(true);
+    await answer(record('hanoi', 'Hanoi'));
+    expect([title().value, isLocked(title())]).toEqual(['Hanoi', false]);
+  });
+
+  it('shows the trip clicked last, whichever loads first', async () => {
+    const { user } = await setup();
+    const answerJeju = slow('GET /trips/jeju');
+    await user.click(link('Jeju'));
+    await user.click(link('Hanoi'));
+    await screen.findByRole('heading', { level: 2, name: 'Hanoi' });
+    await answerJeju(record('jeju', 'Jeju'));
+    expect(title().value).toBe('Hanoi');
+    expect(isLocked(title())).toBe(false);
+  });
+
+  it('asks before a new trip replaces unsaved changes', async () => {
+    const { user, container } = await setup('Jeju');
+    await user.type(title(), '!');
+    vi.mocked(confirm).mockReturnValue(false);
+    await user.click(button('+ New trip'));
+    fireEvent.submit(container.querySelector('form')!);
+    expect(confirm).toHaveBeenCalled();
+    expect(calls).not.toContain('POST /trips');
+    await user.click(button('Cancel'));
+    expect(title().value).toBe('Jeju!');
+  });
+
+  it('creates a trip once, however often the button is pressed', async () => {
+    const { user, container } = await setup();
+    const answer = slow('POST /trips');
+    await user.click(button('+ New trip'));
+    fireEvent.submit(container.querySelector('form')!);
+    fireEvent.submit(container.querySelector('form')!);
+    await answer(record('new', 'New one'));
+    expect(calls.filter((c) => c === 'POST /trips')).toHaveLength(1);
+  });
+
+  it('leaves the new trip form when a trip is opened', async () => {
+    const { user } = await setup();
+    await user.click(button('+ New trip'));
+    await user.click(link('Hanoi'));
+    expect(await screen.findByRole('heading', { level: 2, name: 'Hanoi' })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'New trip' })).toBeNull();
   });
 });

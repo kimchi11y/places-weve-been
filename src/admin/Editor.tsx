@@ -82,6 +82,10 @@ export default function Editor() {
   const [message, setMessage] = useState('');
   const [errors, setErrors] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
+  /** An answer on its way replaces the form, so nothing can be typed into it meanwhile. */
+  const [waiting, setWaiting] = useState<'' | 'loading' | 'saving'>('');
+  const saving = useRef(false);
+  const lastAsked = useRef(0);
 
   const dirty = saveable(trip) !== saveable(saved);
 
@@ -111,10 +115,35 @@ export default function Editor() {
   async function open(id: string) {
     if (dirty && !confirm('You have unsaved changes. Leave this trip without saving?')) return;
     setMessage('');
+    setWaiting('loading');
+    const asked = ++lastAsked.current;
     try {
-      loaded(await api<TripRecord>(`/trips/${id}`));
+      const record = await api<TripRecord>(`/trips/${id}`);
+      if (asked !== lastAsked.current) return; // another trip was clicked since
+      loaded(record);
+      setCreating(false);
+    } catch (err) {
+      if (asked === lastAsked.current) showError(err);
+    } finally {
+      if (asked === lastAsked.current) setWaiting('');
+    }
+  }
+
+  /** Runs one save at a time, with the form and the trip list locked until it's done. */
+  async function whileSaving<T>(work: () => Promise<T>): Promise<T | null> {
+    if (saving.current) return null;
+    saving.current = true;
+    setWaiting('saving');
+    setBusy('Saving…');
+    try {
+      return await work();
     } catch (err) {
       showError(err);
+      return null;
+    } finally {
+      saving.current = false;
+      setWaiting('');
+      setBusy('');
     }
   }
 
@@ -137,18 +166,12 @@ export default function Editor() {
   /** Saves, and returns the trip as the server now has it (null if it couldn't). */
   async function save(next = trip): Promise<EditTrip | null> {
     if (!next) return null;
-    setBusy('Saving…');
-    try {
+    return whileSaving(async () => {
       const result = loaded(await api<TripRecord>(`/trips/${next.id}`, { method: 'PUT', body: JSON.stringify(toInput(next)) }));
       setTrips(await api<TripSummary[]>('/trips'));
       setMessage(result.draft ? 'Saved. It’s a draft, so only the editor shows it.' : 'Saved. It’s on the site now.');
       return result;
-    } catch (err) {
-      showError(err);
-      return null;
-    } finally {
-      setBusy('');
-    }
+    });
   }
 
   async function upload(stopIndex: number, files: File[]) {
@@ -214,20 +237,19 @@ export default function Editor() {
   }
 
   async function create(input: NewTripInput) {
-    try {
+    if (dirty && !confirm('You have unsaved changes. Leave this trip without saving?')) return;
+    await whileSaving(async () => {
       const t = await api<TripRecord>('/trips', { method: 'POST', body: JSON.stringify(input) });
       setTrips(await api<TripSummary[]>('/trips'));
       setCreating(false);
       loaded(t);
       setMessage('Trip created as a draft. Add stops and photos, then switch on “Show on the site”.');
-    } catch (err) {
-      showError(err);
-    }
+    });
   }
 
   return (
     <div className="editor">
-      <aside className="sidebar">
+      <aside className="sidebar" inert={waiting === 'saving'}>
         <div className="brand">
           <h1>Trip editor</h1>
           <a href="/" target="_blank" rel="noreferrer">View site ↗</a>
@@ -246,7 +268,7 @@ export default function Editor() {
         </p>
       </aside>
 
-      <main>
+      <main inert={!!waiting}>
         {creating && <NewTrip countries={countries} onCreate={create} onCancel={() => setCreating(false)} />}
         {!trip && !creating && (
           <div className="empty">
@@ -275,8 +297,8 @@ export default function Editor() {
           </div>
           {trip && (
             <>
-              <button className="btn" disabled={!dirty || !!busy} onClick={() => { setTrip(saved); setErrors([]); }}>Undo changes</button>
-              <button className="btn primary" disabled={!dirty || !!busy} onClick={() => save()}>Save</button>
+              <button className="btn" disabled={!dirty || !!busy || !!waiting} onClick={() => { setTrip(saved); setErrors([]); }}>Undo changes</button>
+              <button className="btn primary" disabled={!dirty || !!busy || !!waiting} onClick={() => save()}>Save</button>
             </>
           )}
         </footer>
