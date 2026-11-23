@@ -71,9 +71,10 @@ describe('photo backups', () => {
     await live.put(photoKey('p1', 'full'), new Uint8Array([4, 5]), 'image/jpeg');
     const keys = photoKeys(['p1']);
 
-    expect(await copyPhotos(live, saved, keys, { skipExisting: true })).toEqual({
-      copied: 2, skipped: 0, missing: [photoKey('p1', 'tile'), photoKey('p1', 'card')],
-    });
+    const { missing, ...counts } = await copyPhotos(live, saved, keys, { skipExisting: true });
+    expect(counts).toEqual({ copied: 2, skipped: 0 });
+    // files are copied several at a time, so they can finish in any order
+    expect(missing.sort()).toEqual([photoKey('p1', 'card'), photoKey('p1', 'tile')]);
     const file = await saved.get(photoKey('p1', 'full'));
     expect(file!.contentType).toBe('image/jpeg');
     expect(new Uint8Array(await new Response(file!.body).arrayBuffer())).toEqual(new Uint8Array([4, 5]));
