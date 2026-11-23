@@ -14,9 +14,6 @@ stops:
     date: 2025-09-18
     story: Landed into a city still humming from Oktoberfest. Pretzels the size of our heads, a long walk through the Englischer Garten, and the kids watching surfers ride the Eisbach wave in disbelief.
     photos: [./photos/munich/munich-1.jpg, ./photos/munich/munich-2.jpg]
-    notes:
-      - "Kids rated the pretzels 11/10"
-      - "Surfing. In a river. In the middle of the city?!"
   - name: Salzburg
     code: SZG
     lat: 47.8
@@ -24,9 +21,6 @@ stops:
     date: 2025-09-21
     story: Morning fog lifting off the Salzach. We climbed to the fortress, got gloriously lost in the old town lanes, and ate far too much Mozartkugel on the way back down.
     photos: [./photos/salzburg/salzburg-1.jpg, ./photos/salzburg/salzburg-2.jpg]
-    notes:
-      - "Fog at 8am, sunshine by 11"
-      - "Mozartkugel count: 23 (don't tell the dentist)"
   - name: Hallstatt
     code: HAL
     lat: 47.56
@@ -34,8 +28,6 @@ stops:
     date: 2025-09-23
     story: The postcard view is real. We took the first ferry across the lake before the crowds, then rode the funicular up to the salt mine and slid down the miners' wooden slides.
     photos: [./photos/hallstatt/hallstatt-1.jpg, ./photos/hallstatt/hallstatt-2.jpg]
-    notes:
-      - "First ferry, 7:40am. Worth every yawn."
   - name: Vienna
     code: VIE
     lat: 48.21
@@ -43,9 +35,6 @@ stops:
     date: 2025-09-25
     story: Grand cafés, a Ferris wheel older than our great-grandparents, and one perfect slice of Sachertorte split four ways. A slow, golden end to the trip.
     photos: [./photos/vienna/vienna-1.jpg, ./photos/vienna/vienna-2.jpg]
-    notes:
-      - "The Riesenrad has been turning since 1897"
-      - "One Sachertorte, four forks, zero fights"
 ---
 
 This was the trip we had been talking about for years. We rented a car in Munich and let the Alps decide the pace.

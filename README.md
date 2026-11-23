@@ -23,7 +23,7 @@ npm test
 
 The site runs as a Cloudflare Worker. Each page is made when someone visits, from:
 
-- **D1** (Cloudflare's SQLite database): trips, stops, stories and notes
+- **D1** (Cloudflare's SQLite database): trips, stops and stories
 - **R2** (Cloudflare's file storage): the photos, resized and with their GPS location removed
 
 Nothing personal lives in this repository. `npm run dev` simulates D1 and R2 on your computer (in `.wrangler/`, which git ignores), so you don't need a Cloudflare account to work on the site.
@@ -33,7 +33,7 @@ Nothing personal lives in this repository. `npm run dev` simulates D1 and R2 on 
 Open **/admin** on your site (or http://localhost:4321/admin while `npm run dev` runs). From there you can:
 
 - start a trip (it begins as a **draft**, hidden from the site until you tick *Show on the site*)
-- add, reorder and remove stops, with their story, notes, date and map position
+- add, reorder and remove stops, with their story, date and map position
 - drag photos onto a stop, from a phone or a computer. Each is turned upright, resized and re-drawn in your browser before it's sent, which leaves its GPS location and other hidden details behind. iPhone HEIC photos work in every browser
 - star a stop's postcard photos (otherwise its first three are used) and pick the cover
 
@@ -75,8 +75,6 @@ stops:                            # in the order you travelled
     date: 2026-06-01
     story: A few sentences for the postcard.
     photos: [./photos/hanoi/IMG_0001.jpg, ./photos/hanoi/IMG_0007.jpg]  # 2–3 favourites for the globe postcard
-    notes:                        # optional: handwritten notes that fill gaps between the photos
-      - "Egg coffee is a thing and it's amazing"
 ---
 
 The long story goes here, below the dashes. Write as much as you like.

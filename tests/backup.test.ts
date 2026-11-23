@@ -4,12 +4,13 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { copyPhotos, exportData, importData, photoKeys } from '../src/server/backup';
 import { localFolderPhotoStore } from '../src/server/photos/local-folder';
+import { stops } from '../src/schema/tables';
 import { photoKey } from '../src/server/photos/photo-store';
 import { createSqliteTripStore } from '../src/server/stores/sqlite';
 import { openSqliteFile } from '../src/server/stores/sqlite-file';
 
 const jeju = { title: 'Jeju', startDate: '2025-04-03', endDate: '2025-04-08', countries: ['KR'], summary: 'Islands.' };
-const stop = { name: 'Seogwipo', code: 'SGP', lat: 33.25, lng: 126.56, date: '2025-04-07', story: 'Waterfalls.', notes: ['Tangerines!'] };
+const stop = { name: 'Seogwipo', code: 'SGP', lat: 33.25, lng: 126.56, date: '2025-04-07', story: 'Waterfalls.' };
 
 let dir: string;
 beforeEach(async () => {
@@ -22,6 +23,7 @@ async function filled() {
   const store = createSqliteTripStore(db);
   const trip = await store.createTrip(jeju);
   const { trip: saved } = await store.saveTrip(trip.id, { ...jeju, draft: true, stops: [stop] });
+  await db.update(stops).set({ notes: ['Tangerines!'] });
   await store.addPhoto(trip.id, saved.stops[0].id, { id: 'p1', fileName: 'a.jpg', takenAt: '2025-04-07 09:00:00', width: 2000, height: 1500 });
   await store.saveTrip(trip.id, { ...jeju, draft: false, story: 'The long story.', coverPhotoId: 'p1', stops: [{ ...stop, id: saved.stops[0].id, postcard: ['p1'] }] });
   return { db, store, id: trip.id };
@@ -71,9 +73,10 @@ describe('photo backups', () => {
     await live.put(photoKey('p1', 'full'), new Uint8Array([4, 5]), 'image/jpeg');
     const keys = photoKeys(['p1']);
 
-    expect(await copyPhotos(live, saved, keys, { skipExisting: true })).toEqual({
-      copied: 2, skipped: 0, missing: [photoKey('p1', 'tile'), photoKey('p1', 'card')],
-    });
+    const { missing, ...counts } = await copyPhotos(live, saved, keys, { skipExisting: true });
+    expect(counts).toEqual({ copied: 2, skipped: 0 });
+    // files are copied several at a time, so they can finish in any order
+    expect(missing.sort()).toEqual([photoKey('p1', 'card'), photoKey('p1', 'tile')]);
     const file = await saved.get(photoKey('p1', 'full'));
     expect(file!.contentType).toBe('image/jpeg');
     expect(new Uint8Array(await new Response(file!.body).arrayBuffer())).toEqual(new Uint8Array([4, 5]));

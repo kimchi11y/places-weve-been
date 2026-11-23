@@ -53,7 +53,7 @@ async function seedTrip(trips: TripStore, photos: PhotoStore, folder: string) {
 
   const created = await trips.createTrip(details);
   const stops = (d.stops ?? []).map((s: Record<string, any>) => ({
-    name: s.name, code: s.code, lat: s.lat, lng: s.lng, date: day(s.date), story: s.story, notes: s.notes ?? [],
+    name: s.name, code: s.code, lat: s.lat, lng: s.lng, date: day(s.date), story: s.story,
   }));
   const draft = { ...details, story: body.trim(), vlog: d.vlog ?? '', draft: true, stops } satisfies TripInput;
   const { trip } = await trips.saveTrip(created.id, draft);

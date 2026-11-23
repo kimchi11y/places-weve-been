@@ -124,5 +124,9 @@ const legText = (i: number) => {
   startViewer(article);
   startProgress(article);
   // The walls just changed height, so a link to one stop needs aiming again
-  if (location.hash) document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
+  try {
+    if (location.hash) document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
+  } catch {
+    // not a readable address, like "#%": stay at the top
+  }
 </script>

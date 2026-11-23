@@ -1,6 +1,9 @@
+import { eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { stops } from '../src/schema/tables';
 import { ValidationError, type TripInput, type TripRecord } from '../src/schema/trip';
-import { sqliteFileTripStore } from '../src/server/stores/sqlite-file';
+import { createSqliteTripStore } from '../src/server/stores/sqlite';
+import { openSqliteFile, sqliteFileTripStore } from '../src/server/stores/sqlite-file';
 import type { TripStore } from '../src/server/stores/trip-store';
 
 const jeju = { title: 'Jeju Island', startDate: '2025-04-03', endDate: '2025-04-08', countries: ['kr'], summary: 'Slow island days.' };
@@ -33,6 +36,14 @@ describe('trips', () => {
     expect(await store.listTrips({ drafts: true })).toHaveLength(1);
   });
 
+  it('takes names in any script', async () => {
+    const tokyo = await store.createTrip({ ...jeju, title: '東京' });
+    expect([tokyo.id, (await store.createTrip({ ...jeju, title: '大阪' })).id]).toEqual(['東京-2025', '大阪-2025']);
+    const { trip } = await store.saveTrip(tokyo.id, edit(tokyo, [stop('浅草'), stop('渋谷')]));
+    expect(trip.stops.map((s) => s.name)).toEqual(['浅草', '渋谷']);
+    expect(await errorsOf(store.saveTrip(tokyo.id, edit(tokyo, [stop('🏝️')])))).toEqual(['Stop 1 needs a name.']);
+  });
+
   it('explains what is wrong in plain words', async () => {
     const errors = await errorsOf(store.createTrip({ ...jeju, title: ' ', endDate: '2025-04-01', countries: ['XX'] }));
     expect(errors).toEqual(['The trip needs a title.', 'Unknown country code XX.', 'The trip ends before it starts.']);
@@ -44,14 +55,25 @@ describe('trips', () => {
   it('saves stops in order and tidies what was typed', async () => {
     const trip = await store.createTrip(jeju);
     const { trip: saved } = await store.saveTrip(trip.id, edit(trip, [
-      stop('Jeju City', { notes: ['  Tangerines! ', ''] }),
+      stop('Jeju City', { story: '  Tangerines! ' }),
       stop('Seogwipo', { code: 'SGP', date: '2025-04-07' }),
     ], { vlog: '' }));
-    expect(saved.stops.map((s) => [s.position, s.name, s.code, s.notes])).toEqual([
-      [0, 'Jeju City', 'CJU', ['Tangerines!']],
-      [1, 'Seogwipo', 'SGP', []],
+    expect(saved.stops.map((s) => [s.position, s.name, s.code, s.story])).toEqual([
+      [0, 'Jeju City', 'CJU', 'Tangerines!'],
+      [1, 'Seogwipo', 'SGP', 'Black pork barbecue.'],
     ]);
     expect(saved.vlog).toBeNull();
+  });
+
+  it('leaves old handwritten notes as they were', async () => {
+    const db = await openSqliteFile(':memory:');
+    store = createSqliteTripStore(db);
+    const trip = await store.createTrip(jeju);
+    const { trip: saved } = await store.saveTrip(trip.id, edit(trip, [stop('Jeju City')]));
+    const id = saved.stops[0].id;
+    await db.update(stops).set({ notes: ['Tangerines!'] }).where(eq(stops.id, id));
+    const { trip: again } = await store.saveTrip(trip.id, edit(trip, [{ ...stop('Jeju-si'), id }, stop('Seogwipo')]));
+    expect(again.stops.map((s) => [s.name, s.notes])).toEqual([['Jeju-si', ['Tangerines!']], ['Seogwipo', []]]);
   });
 
   it('rejects stops with the same name', async () => {
@@ -59,6 +81,16 @@ describe('trips', () => {
     expect(await errorsOf(store.saveTrip(trip.id, edit(trip, [stop('Jeju City'), stop('jeju city')])))).toEqual([
       'Two stops are called "jeju city".',
     ]);
+  });
+
+  it('rejects the same stop sent twice, instead of losing one', async () => {
+    const trip = await store.createTrip(jeju);
+    const { trip: saved } = await store.saveTrip(trip.id, edit(trip, [stop('Jeju City')]));
+    const id = saved.stops[0].id;
+    expect(await errorsOf(store.saveTrip(trip.id, edit(trip, [{ ...stop('Jeju City'), id }, { ...stop('Seogwipo'), id }])))).toEqual([
+      'Seogwipo: this stop is in the trip twice. Reload and try again.',
+    ]);
+    expect((await store.getTrip(trip.id))!.stops.map((s) => s.name)).toEqual(['Jeju City']);
   });
 
   it('only publishes trips whose stops all have photos', async () => {
@@ -137,6 +169,22 @@ describe('photos', () => {
     await store.createTrip({ ...jeju, title: 'Seoul', startDate: '2023-05-01', endDate: '2023-05-05' });
     expect((await store.getTrips()).map((t) => [t.id, t.stops.map((s) => s.photos.length)])).toEqual([['jeju-island-2025', [3, 1]]]);
     expect((await store.getTrips({ drafts: true })).map((t) => t.id)).toEqual(['jeju-island-2025', 'seoul-2023']);
+  });
+
+  it('reorders stops without touching their photos', async () => {
+    const trip = await tripWithPhotos();
+    const { trip: saved, removedPhotoIds } = await store.saveTrip(trip.id, edit(trip, [...trip.stops].reverse().map((s) => ({ ...stop(s.name), id: s.id }))));
+    expect(saved.stops.map((s) => [s.name, s.photos.length])).toEqual([['Seogwipo', 1], ['Jeju City', 3]]);
+    expect(removedPhotoIds).toEqual([]);
+  });
+
+  it('changes nothing when a save is refused', async () => {
+    const trip = await tripWithPhotos();
+    expect(await errorsOf(store.saveTrip(trip.id, edit(trip, [{ ...stop('New name'), id: 'deleted-elsewhere' }], { title: 'Changed' })))).toEqual([
+      'New name: this stop was deleted elsewhere. Reload and try again.',
+    ]);
+    expect(await errorsOf(store.saveTrip(trip.id, edit(trip, [], { coverPhotoId: 'falls' })))).toEqual(["The cover photo isn't in this trip any more."]);
+    expect(await store.getTrip(trip.id)).toEqual(trip);
   });
 
   it('deleting a trip returns all its photo ids', async () => {

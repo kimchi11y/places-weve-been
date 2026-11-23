@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { createGlobe, type Globe } from '../lib/globe/engine';
 import type { Stats, Trip } from '../lib/types';
 import { Icon, Sticker } from './icons';
@@ -83,12 +83,16 @@ export default function GlobeExplorer({ trips, stats }: Props) {
   }
 
   const peek = (t: Trip | null) => {
-    if (innerWidth < WIDE || scrollY > innerHeight / 2) return;
-    if (t) globeRef.current?.peek(t);
-    else globeRef.current?.unpeek();
+    if (!t) {
+      globeRef.current?.unpeek();
+      if (picker) globeRef.current?.hold(true);
+    } else if (innerWidth >= WIDE && scrollY <= innerHeight / 2) globeRef.current?.peek(t);
   };
 
   const goToShelf = () => shelfRef.current?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+
+  // the globe's callbacks outlive any one render
+  const onSelect = useEffectEvent(open);
 
   useEffect(() => {
     const wide = () => innerWidth >= WIDE;
@@ -106,7 +110,7 @@ export default function GlobeExplorer({ trips, stats }: Props) {
       },
       focusLayout: () => (wide() ? { tx: 0.34, ty: 0.52 } : { tx: 0.5, ty: 0.19 }),
       focusRoom: (w, h) => (wide() ? { span: Math.min(w, h) * 0.5, right: w - 480 } : { span: Math.min(w * 0.62, h * 0.22), right: w }),
-      onSelect: (t, i) => openRef.current(t, i),
+      onSelect: (t, i) => onSelect(t, i),
       onCluster: (ts) => {
         globeRef.current?.hold(true);
         setPicker(ts);
@@ -123,10 +127,6 @@ export default function GlobeExplorer({ trips, stats }: Props) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // the globe's callbacks outlive any one render
-  const openRef = useRef(open);
-  openRef.current = open;
 
   useEffect(() => {
     document.body.classList.toggle('sheet-open', sheetOpen);
@@ -230,7 +230,7 @@ export default function GlobeExplorer({ trips, stats }: Props) {
       </nav>
 
       <TripSheet trip={trip} stop={stop} picker={picker} onStop={showStop} onPick={open} onClose={close} />
-      <SearchPalette trips={trips} open={searching} onClose={() => { setSearching(false); peek(null); }} onPick={open} onPeek={peek} />
+      <SearchPalette trips={trips} open={searching} onClose={() => setSearching(false)} onPick={open} onPeek={peek} />
     </>
   );
 }

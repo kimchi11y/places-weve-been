@@ -38,8 +38,11 @@ export const POST = route(async ({ params, request }) => {
 
   const id = newId();
   const photos = photoStore();
-  await Promise.all(files.map(({ size, bytes, type }) => photos.put(photoKey(id, size), bytes, type)));
   try {
+    // Wait for every size, even after one fails, so none arrives after the clean-up below
+    const stored = await Promise.allSettled(files.map(({ size, bytes, type }) => photos.put(photoKey(id, size), bytes, type)));
+    const failed = stored.find((s) => s.status === 'rejected');
+    if (failed) throw failed.reason;
     return json(await tripStore().addPhoto(params.id!, stopId, { ...meta, id }), 201);
   } catch (error) {
     await deletePhotoFiles(photos, [id]);

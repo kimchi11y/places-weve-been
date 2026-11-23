@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { useEffect, useEffectEvent, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
+import { AnimatePresence, domAnimation, LazyMotion } from 'motion/react';
+import * as m from 'motion/react-m';
 import { searchTrips, splitMatch } from '../lib/search';
 import type { Trip } from '../lib/types';
 import { Icon } from './icons';
@@ -42,18 +43,30 @@ export default function SearchPalette({ trips, open, onClose, onPick, onPeek }: 
   }, [trips, query]);
   const current = hits[Math.min(sel, hits.length - 1)];
 
+  // Start over each time it opens, even if it's still fading out from the last time
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      setQuery('');
+      setSel(0);
+    }
+  }
+
   useEffect(() => {
     if (!open) return;
-    setQuery('');
-    setSel(0);
-    setTimeout(() => inputRef.current?.focus(), 30);
+    const timer = setTimeout(() => inputRef.current?.focus(), 30);
+    return () => clearTimeout(timer);
   }, [open]);
 
-  // turn the globe toward whatever is highlighted
+  // turn the globe toward whatever is highlighted, and let it go on turning once this closes
+  const peek = useEffectEvent(onPeek);
+  const highlighted = open ? current?.trip : undefined;
   useEffect(() => {
-    if (open) onPeek(current?.trip ?? null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, current?.trip]);
+    if (!open) return;
+    peek(highlighted ?? null);
+    return () => peek(null);
+  }, [open, highlighted]);
 
   const pick = (i: number) => {
     const h = hits[i];
@@ -67,51 +80,53 @@ export default function SearchPalette({ trips, open, onClose, onPick, onPeek }: 
   }
 
   return (
-    <AnimatePresence>
-      {open && (
-        <>
-          <motion.div key="bg" className="palette-bg" onClick={onClose}
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
-          <motion.div key="palette" className="palette" role="dialog" aria-modal="true" aria-label="Search trips"
-            initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.25, ease: [0.2, 0.75, 0.15, 1] }}>
-            <div className="q">
-              <Icon name="search" />
-              <input ref={inputRef} type="search" value={query} onKeyDown={onKeyDown} enterKeyHint="go" autoComplete="off"
-                onChange={(e) => { setQuery(e.target.value); setSel(0); }}
-                placeholder="A place, a country, a year…" aria-label="Search trips"
-                role="combobox" aria-expanded="true" aria-controls="palette-results"
-                aria-activedescendant={current ? `hit-${current.trip.id}` : undefined} />
-              <button className="q-close" onClick={onClose} aria-label="Close search"><Icon name="x" /></button>
-            </div>
-            <div className="res" id="palette-results" role="listbox">
-              {!query.trim() && <h4>Recent trips</h4>}
-              {hits.length === 0 && <p className="empty hand">Nowhere called “{query}” yet… maybe next year?</p>}
-              {hits.map((h, i) => {
-                const stop = h.stopIndex === null ? null : h.trip.stops[h.stopIndex];
-                return (
-                  <button key={h.trip.id} id={`hit-${h.trip.id}`} role="option" aria-selected={i === sel}
-                    className={`row${i === sel ? ' is-sel' : ''}`} style={{ '--tint': h.trip.tint } as CSSProperties}
-                    onMouseMove={() => i !== sel && setSel(i)} onClick={() => pick(i)}>
-                    <img src={stop?.photos[0]?.thumb ?? h.trip.cover.thumb} alt="" loading="lazy" />
-                    <span>
-                      <b><Mark text={stop?.name ?? h.trip.title} query={query} /></b>
-                      <small>
-                        {stop && <>{h.trip.title} · </>}{h.trip.year} · <Mark text={h.trip.countryNames.join(', ')} query={query} />
-                      </small>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="hint">
-              <span><kbd>↑</kbd> <kbd>↓</kbd> choose</span>
-              <span><kbd>↵</kbd> fly there</span>
-              <span><kbd>esc</kbd> close</span>
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+    <LazyMotion features={domAnimation} strict>
+      <AnimatePresence>
+        {open && (
+          <>
+            <m.div key="bg" className="palette-bg" onClick={onClose}
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
+            <m.div key="palette" className="palette" role="dialog" aria-modal="true" aria-label="Search trips"
+              initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.25, ease: [0.2, 0.75, 0.15, 1] }}>
+              <div className="q">
+                <Icon name="search" />
+                <input ref={inputRef} type="search" value={query} onKeyDown={onKeyDown} enterKeyHint="go" autoComplete="off"
+                  onChange={(e) => { setQuery(e.target.value); setSel(0); }}
+                  placeholder="A place, a country, a year…" aria-label="Search trips"
+                  role="combobox" aria-expanded="true" aria-controls="palette-results"
+                  aria-activedescendant={current ? `hit-${current.trip.id}` : undefined} />
+                <button className="q-close" onClick={onClose} aria-label="Close search"><Icon name="x" /></button>
+              </div>
+              <div className="res" id="palette-results" role="listbox">
+                {!query.trim() && <h4>Recent trips</h4>}
+                {hits.length === 0 && <p className="empty hand">Nowhere called “{query}” yet… maybe next year?</p>}
+                {hits.map((h, i) => {
+                  const stop = h.stopIndex === null ? null : h.trip.stops[h.stopIndex];
+                  return (
+                    <button key={h.trip.id} id={`hit-${h.trip.id}`} role="option" aria-selected={i === sel}
+                      className={`row${i === sel ? ' is-sel' : ''}`} style={{ '--tint': h.trip.tint } as CSSProperties}
+                      onMouseMove={() => i !== sel && setSel(i)} onClick={() => pick(i)}>
+                      <img src={stop?.photos[0]?.thumb ?? h.trip.cover.thumb} alt="" loading="lazy" />
+                      <span>
+                        <b><Mark text={stop?.name ?? h.trip.title} query={query} /></b>
+                        <small>
+                          {stop && <>{h.trip.title} · </>}{h.trip.year} · <Mark text={h.trip.countryNames.join(', ')} query={query} />
+                        </small>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="hint">
+                <span><kbd>↑</kbd> <kbd>↓</kbd> choose</span>
+                <span><kbd>↵</kbd> fly there</span>
+                <span><kbd>esc</kbd> close</span>
+              </div>
+            </m.div>
+          </>
+        )}
+      </AnimatePresence>
+    </LazyMotion>
   );
 }

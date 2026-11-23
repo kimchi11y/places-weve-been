@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
+import { carryPhoto } from '../lib/carry-photo';
 import { pad, plural } from '../lib/format';
 import type { Trip } from '../lib/types';
 import { Icon } from './icons';
@@ -20,15 +21,16 @@ export default function TripSheet({ trip, stop, picker, onStop, onPick, onClose 
   const sheetRef = useRef<HTMLElement>(null);
   const photoRef = useRef<HTMLImageElement>(null);
   const opener = useRef<Element | null>(null);
-  const [photo, setPhoto] = useState(0);
+  const [turned, setTurned] = useState({ trip, stop, photo: 0 });
   const open = !!trip || !!picker;
 
   // Keep the last trip on screen while the sheet slides away
-  const lastTrip = useRef(trip);
-  if (trip) lastTrip.current = trip;
-  const shown = trip ?? lastTrip.current;
+  const [lastTrip, setLastTrip] = useState(trip);
+  if (trip && trip !== lastTrip) setLastTrip(trip);
+  const shown = trip ?? lastTrip;
 
-  useEffect(() => setPhoto(0), [trip, stop]);
+  // Each stop starts at its first photo
+  const photo = turned.trip === shown && turned.stop === stop ? turned.photo : 0;
 
   useEffect(() => {
     if (open) {
@@ -101,7 +103,7 @@ export default function TripSheet({ trip, stop, picker, onStop, onPick, onClose 
                 <h2 className="sh-title"><em className="i">{shown.title}</em></h2>
                 <p>{shown.summary}</p>
               </div>
-              <button className="print sh-print" onClick={() => setPhoto((p) => p + 1)} disabled={photos.length < 2}
+              <button className="print sh-print" onClick={() => setTurned({ trip: shown, stop, photo: photo + 1 })} disabled={photos.length < 2}
                 aria-label={photos.length > 1 ? `Next photo of ${current?.name}` : `${current?.name}`}>
                 <span className="tape" />
                 <img ref={photoRef} src={here?.tile} alt="" />
@@ -126,7 +128,7 @@ export default function TripSheet({ trip, stop, picker, onStop, onPick, onClose 
             </ol>
           </div>
           <div className="sh-foot">
-            <a className="cta" href={`/trips/${shown.id}`} onClick={() => { if (photoRef.current) photoRef.current.style.viewTransitionName = 'vt-cover'; }}>
+            <a className="cta" href={`/trips/${shown.id}`} onClick={() => carryPhoto(photoRef.current)}>
               Open the journal <span className="arrow"><Icon name="arrow" /></span>
             </a>
             {shown.vlog && <a className="ghost vlog-link" href={shown.vlog} target="_blank" rel="noreferrer" aria-label={`Watch the ${shown.title} vlog`}><Icon name="play" /> Vlog</a>}

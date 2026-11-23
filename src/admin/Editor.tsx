@@ -18,13 +18,17 @@ async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   headers.set('x-places-weve-been', '1');
   if (typeof init.body === 'string') headers.set('content-type', 'application/json');
   const res = await fetch(API + path, { ...init, headers });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new ApiError(data.error ?? `Something went wrong (${res.status})`, data.errors ?? []);
-  return data;
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new ApiError(data.error ?? `Something went wrong (${res.status})`, data.errors ?? []);
+  }
+  return res.json().catch(() => {
+    throw new ApiError('The server sent an unexpected answer. You may need to sign in again in another tab.');
+  });
 }
 
 /** A stop as the form edits it. `id` is missing until a new stop is first saved. */
-type EditStop = Pick<StopRow, 'name' | 'code' | 'lat' | 'lng' | 'date' | 'story' | 'notes'> & {
+type EditStop = Pick<StopRow, 'name' | 'code' | 'lat' | 'lng' | 'date' | 'story'> & {
   id?: string;
   /** React's key: the id, or a temporary one for a new stop */
   key: string;
@@ -61,14 +65,14 @@ const fromRecord = (t: TripRecord): EditTrip => ({
 const toInput = (t: EditTrip): TripInput => ({
   title: t.title, startDate: t.startDate, endDate: t.endDate, countries: t.countries, summary: t.summary,
   story: t.story, vlog: t.vlog, draft: t.draft, coverPhotoId: t.coverPhotoId,
-  stops: t.stops.map(({ id, name, code, lat, lng, date, story, notes, postcard }) => ({ id, name, code, lat, lng, date, story, notes, postcard })),
+  stops: t.stops.map(({ id, name, code, lat, lng, date, story, postcard }) => ({ id, name, code, lat, lng, date, story, postcard })),
 });
 
 /** What gets saved: everything except the photos, which are uploaded and deleted straight away. */
 const saveable = (t: EditTrip | null) => (t ? JSON.stringify(toInput(t)) : '');
 
 const blankStop = (date: string): EditStop => ({
-  key: crypto.randomUUID(), name: '', code: '', lat: 0, lng: 0, date, story: '', notes: [], postcard: [], photos: [],
+  key: crypto.randomUUID(), name: '', code: '', lat: 0, lng: 0, date, story: '', postcard: [], photos: [],
 });
 
 interface Country { code: string; name: string }
@@ -82,6 +86,10 @@ export default function Editor() {
   const [message, setMessage] = useState('');
   const [errors, setErrors] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
+  /** An answer on its way replaces the form, so nothing can be typed into it meanwhile. */
+  const [waiting, setWaiting] = useState<'' | 'loading' | 'saving'>('');
+  const saving = useRef(false);
+  const lastAsked = useRef(0);
 
   const dirty = saveable(trip) !== saveable(saved);
 
@@ -111,10 +119,35 @@ export default function Editor() {
   async function open(id: string) {
     if (dirty && !confirm('You have unsaved changes. Leave this trip without saving?')) return;
     setMessage('');
+    setWaiting('loading');
+    const asked = ++lastAsked.current;
     try {
-      loaded(await api<TripRecord>(`/trips/${id}`));
+      const record = await api<TripRecord>(`/trips/${id}`);
+      if (asked !== lastAsked.current) return; // another trip was clicked since
+      loaded(record);
+      setCreating(false);
+    } catch (err) {
+      if (asked === lastAsked.current) showError(err);
+    } finally {
+      if (asked === lastAsked.current) setWaiting('');
+    }
+  }
+
+  /** Runs one save at a time, with the form and the trip list locked until it's done. */
+  async function whileSaving<T>(work: () => Promise<T>): Promise<T | null> {
+    if (saving.current) return null;
+    saving.current = true;
+    setWaiting('saving');
+    setBusy('Saving…');
+    try {
+      return await work();
     } catch (err) {
       showError(err);
+      return null;
+    } finally {
+      saving.current = false;
+      setWaiting('');
+      setBusy('');
     }
   }
 
@@ -137,18 +170,12 @@ export default function Editor() {
   /** Saves, and returns the trip as the server now has it (null if it couldn't). */
   async function save(next = trip): Promise<EditTrip | null> {
     if (!next) return null;
-    setBusy('Saving…');
-    try {
+    return whileSaving(async () => {
       const result = loaded(await api<TripRecord>(`/trips/${next.id}`, { method: 'PUT', body: JSON.stringify(toInput(next)) }));
       setTrips(await api<TripSummary[]>('/trips'));
       setMessage(result.draft ? 'Saved. It’s a draft, so only the editor shows it.' : 'Saved. It’s on the site now.');
       return result;
-    } catch (err) {
-      showError(err);
-      return null;
-    } finally {
-      setBusy('');
-    }
+    });
   }
 
   async function upload(stopIndex: number, files: File[]) {
@@ -214,20 +241,19 @@ export default function Editor() {
   }
 
   async function create(input: NewTripInput) {
-    try {
+    if (dirty && !confirm('You have unsaved changes. Leave this trip without saving?')) return;
+    await whileSaving(async () => {
       const t = await api<TripRecord>('/trips', { method: 'POST', body: JSON.stringify(input) });
       setTrips(await api<TripSummary[]>('/trips'));
       setCreating(false);
       loaded(t);
       setMessage('Trip created as a draft. Add stops and photos, then switch on “Show on the site”.');
-    } catch (err) {
-      showError(err);
-    }
+    });
   }
 
   return (
     <div className="editor">
-      <aside className="sidebar">
+      <aside className="sidebar" inert={waiting === 'saving'}>
         <div className="brand">
           <h1>Trip editor</h1>
           <a href="/" target="_blank" rel="noreferrer">View site ↗</a>
@@ -246,7 +272,7 @@ export default function Editor() {
         </p>
       </aside>
 
-      <main>
+      <main inert={!!waiting}>
         {creating && <NewTrip countries={countries} onCreate={create} onCancel={() => setCreating(false)} />}
         {!trip && !creating && (
           <div className="empty">
@@ -275,8 +301,8 @@ export default function Editor() {
           </div>
           {trip && (
             <>
-              <button className="btn" disabled={!dirty || !!busy} onClick={() => { setTrip(saved); setErrors([]); }}>Undo changes</button>
-              <button className="btn primary" disabled={!dirty || !!busy} onClick={() => save()}>Save</button>
+              <button className="btn" disabled={!dirty || !!busy || !!waiting} onClick={() => { setTrip(saved); setErrors([]); }}>Undo changes</button>
+              <button className="btn primary" disabled={!dirty || !!busy || !!waiting} onClick={() => save()}>Save</button>
             </>
           )}
         </footer>
@@ -316,7 +342,7 @@ function TripForm({ trip, countries, edit, onUpload, onDeletePhoto, onRemoveStop
           <Field label="Last day">
             <input type="date" value={trip.endDate} onChange={(e) => edit((t) => void (t.endDate = e.target.value))} />
           </Field>
-          <Field label="Countries" wide>
+          <Field label="Countries" group wide>
             <CountryPicker countries={countries} value={trip.countries} onChange={(v) => edit((t) => void (t.countries = v))} />
           </Field>
           <Field label="Summary" hint="One or two sentences, shown on the globe." wide>
@@ -348,9 +374,9 @@ function TripForm({ trip, countries, edit, onUpload, onDeletePhoto, onRemoveStop
       </button>
 
       <section className="card">
-        <h2>The full story</h2>
+        <h2 id="full-story">The full story</h2>
         <p className="hint">Shown on the trip page. Blank lines start new paragraphs; **bold** and [links](https://…) work too.</p>
-        <textarea className="story" rows={10} value={trip.story} onChange={(e) => edit((t) => void (t.story = e.target.value))} />
+        <textarea className="story" aria-labelledby="full-story" rows={10} value={trip.story} onChange={(e) => edit((t) => void (t.story = e.target.value))} />
       </section>
     </div>
   );
@@ -395,7 +421,7 @@ function StopCard({ index, count, trip, stop, edit, onMove, onRemove, onUpload, 
             value={stop.name}
             placeholder="e.g. Hallstatt"
             onChange={(e) => edit((s) => void (s.name = e.target.value))}
-            onBlur={() => edit((s) => void (s.code ||= slugify(s.name).replace(/-/g, '').slice(0, 3).toUpperCase()))}
+            onBlur={() => edit((s) => void (s.code ||= slugify(s.name).replace(/[^a-z0-9]/g, '').slice(0, 3).toUpperCase()))}
           />
         </Field>
         <Field label="Stamp code" hint="Up to 4 letters.">
@@ -409,9 +435,6 @@ function StopCard({ index, count, trip, stop, edit, onMove, onRemove, onUpload, 
         </Field>
         <Field label="Postcard story" wide>
           <textarea rows={3} value={stop.story} onChange={(e) => edit((s) => void (s.story = e.target.value))} />
-        </Field>
-        <Field label="Handwritten notes" hint="Optional. One per line; they fill gaps in the photo wall." wide>
-          <textarea rows={2} value={stop.notes.join('\n')} onChange={(e) => edit((s) => void (s.notes = e.target.value.split('\n')))} />
         </Field>
       </div>
 
@@ -469,13 +492,15 @@ function StopCard({ index, count, trip, stop, edit, onMove, onRemove, onUpload, 
 
 // ---------- small inputs ----------
 
-function Field({ label, hint, wide, children }: { label: string; hint?: ReactNode; wide?: boolean; children: ReactNode }) {
+/** `group` is for several controls under one label: a <label> would pass clicks on to the first of them. */
+function Field({ label, hint, wide, group, children }: { label: string; hint?: ReactNode; wide?: boolean; group?: boolean; children: ReactNode }) {
+  const Box = group ? 'div' : 'label';
   return (
-    <label className={`field${wide ? ' wide' : ''}`}>
+    <Box className={`field${wide ? ' wide' : ''}`} {...(group && { role: 'group', 'aria-label': label })}>
       <span className="label">{label}</span>
       {children}
       {hint && <span className="hint">{hint}</span>}
-    </label>
+    </Box>
   );
 }
 
@@ -495,10 +520,15 @@ function Coords({ lat, lng, onChange }: { lat: number; lng: number; onChange: (l
 function CountryPicker({ countries, value, onChange }: { countries: Country[]; value: string[]; onChange: (v: string[]) => void }) {
   const [text, setText] = useState('');
   const nameOf = (code: string) => countries.find((c) => c.code === code)?.name ?? code;
+  /** Picking from the list fills in "Vietnam (VN)"; someone still typing hasn't chosen yet ("vi" isn't the Virgin Islands). */
+  const type = (input: string) => {
+    setText(input);
+    if (/\([A-Z]{2}\)$/.test(input)) choose(input);
+  };
   const choose = (input: string) => {
     const q = input.trim().toLowerCase();
     const match = countries.find((c) => `${c.name} (${c.code})`.toLowerCase() === q || c.name.toLowerCase() === q || c.code.toLowerCase() === q);
-    if (!match) return setText(input);
+    if (!match) return;
     if (!value.includes(match.code)) onChange([...value, match.code]);
     setText('');
   };
@@ -507,14 +537,16 @@ function CountryPicker({ countries, value, onChange }: { countries: Country[]; v
       {value.map((code) => (
         <span key={code} className="chip">
           {nameOf(code)}
-          <button type="button" title="Remove" onClick={() => onChange(value.filter((c) => c !== code))}>×</button>
+          <button type="button" title="Remove" aria-label={`Remove ${nameOf(code)}`} onClick={() => onChange(value.filter((c) => c !== code))}>×</button>
         </span>
       ))}
       <input
         list="country-list"
+        aria-label="Add a country"
         value={text}
         placeholder={value.length ? 'Add another…' : 'Start typing a country…'}
-        onChange={(e) => choose(e.target.value)}
+        onChange={(e) => type(e.target.value)}
+        onBlur={() => { if (text.trim().length > 2) choose(text); }}
         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); choose(text); } }}
       />
       <datalist id="country-list">
@@ -539,14 +571,14 @@ function NewTrip({ countries, onCreate, onCancel }: {
         <Field label="Title" wide><input required value={t.title} placeholder="e.g. Vietnam" onChange={(e) => set({ title: e.target.value })} /></Field>
         <Field label="First day"><input required type="date" value={t.startDate} onChange={(e) => set({ startDate: e.target.value, endDate: t.endDate || e.target.value })} /></Field>
         <Field label="Last day"><input required type="date" value={t.endDate} onChange={(e) => set({ endDate: e.target.value })} /></Field>
-        <Field label="Countries" wide><CountryPicker countries={countries} value={t.countries} onChange={(v) => set({ countries: v })} /></Field>
+        <Field label="Countries" group wide><CountryPicker countries={countries} value={t.countries} onChange={(v) => set({ countries: v })} /></Field>
         <Field label="Summary" hint="One or two sentences, shown on the globe." wide>
           <textarea required rows={2} value={t.summary} onChange={(e) => set({ summary: e.target.value })} />
         </Field>
       </div>
       <div className="form-actions">
         <button type="button" className="btn" onClick={onCancel}>Cancel</button>
-        <button className="btn primary">Create trip</button>
+        <button type="submit" className="btn primary">Create trip</button>
       </div>
     </form>
   );

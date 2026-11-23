@@ -1,7 +1,7 @@
 /*
  * The photo walls. Photos go, in order, into the shortest column so a wall reads left to right.
  * An odd one out becomes a full-width lead photo, and any space left at the bottom of a column
- * is filled by a stamp, a route sketch or a handwritten note.
+ * is filled by a stamp or a route sketch.
  */
 const GAP = 14;
 const FRAME = 14; // white print border, top + bottom
@@ -9,7 +9,7 @@ const STRETCH_MAX = 120; // smaller gaps are absorbed by cropping a column's las
 const SPLIT_OVER = 440; // taller gaps get two cards instead of one huge one
 
 interface Wall { el: HTMLElement; tiles: HTMLElement[]; stop: HTMLElement }
-type Turns = Map<HTMLElement, { turn: number; notes: number }>;
+type Turns = Map<HTMLElement, number>;
 
 const ratioOf = (tile: HTMLElement) => Number(tile.dataset.ratio);
 
@@ -18,14 +18,11 @@ function filler(stop: HTMLElement, height: number, turns: Turns): HTMLElement[] 
     const half = (height - GAP) / 2;
     return [...filler(stop, half, turns), ...filler(stop, half, turns)];
   }
-  const state = turns.get(stop) ?? { turn: 0, notes: 0 };
-  turns.set(stop, state);
-  const notes = stop.querySelectorAll<HTMLTemplateElement>('template[data-fill="note"]');
-  const kinds = height < 160 ? ['stamp', 'note'] : ['map', 'note', 'stamp'];
-  let kind = kinds[state.turn++ % kinds.length];
-  if (kind === 'note' && state.notes >= notes.length) kind = 'stamp';
-  let tpl = kind === 'note' ? notes[state.notes++] : stop.querySelector<HTMLTemplateElement>(`template[data-fill="${kind}"]`);
-  tpl ??= stop.querySelector<HTMLTemplateElement>('template[data-fill="stamp"]')!;
+  const turn = turns.get(stop) ?? 0;
+  turns.set(stop, turn + 1);
+  // Short gaps always get a stamp; a trip with one stop has no route to sketch
+  const map = height < 160 || turn % 2 ? null : stop.querySelector<HTMLTemplateElement>('template[data-fill="map"]');
+  const tpl = map ?? stop.querySelector<HTMLTemplateElement>('template[data-fill="stamp"]')!;
   const card = tpl.content.firstElementChild!.cloneNode(true) as HTMLElement;
   card.style.height = `${height}px`;
   return [card];
