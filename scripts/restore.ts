@@ -10,7 +10,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { parseArgs, promisify } from 'node:util';
-import { copyPhotos, exportData, importData, photoKeys, type BackupData } from '../src/server/backup';
+import { exportData, missingFiles, photoKeys, replaceAll, type BackupData } from '../src/server/backup';
 import { localFolderPhotoStore } from '../src/server/photos/local-folder';
 import { connect } from './cloudflare-env';
 
@@ -31,11 +31,7 @@ const backup: BackupData = JSON.parse(await readFile(path.join(folder, 'backup.j
 // The photos folder sits next to the dated folders.
 const saved = localFolderPhotoStore(path.dirname(folder));
 const wanted = photoKeys(backup.photos.map((p) => p.id));
-const absent = (await Promise.all(wanted.map(async (key) => {
-  const file = await saved.get(key);
-  await file?.body.cancel();
-  return file ? null : key;
-}))).filter(Boolean);
+const absent = await missingFiles(saved, wanted);
 if (absent.length) {
   console.error(`${absent.length} of this backup's photo files aren't in ${path.dirname(folder)}/photos. Nothing was changed.`);
   process.exit(1);
@@ -59,16 +55,12 @@ if (remote) {
   }
 }
 
-// New files first, then the database, then old files: a failure never leaves rows without photos.
-const { copied } = await copyPhotos(saved, photos, wanted, {
+const { copied, removed } = await replaceAll({
+  db, photos, saved, backup,
   concurrency: remote ? 6 : 1,
   onFile: (done, total) => {
     if (done % 20 === 0 || done === total) console.log(`  photo files: ${done} of ${total}`);
   },
 });
-await importData(db, backup);
-const keep = new Set(backup.photos.map((p) => p.id));
-const stale = photoKeys(current.photos.map((p) => p.id).filter((id) => !keep.has(id)));
-await photos.delete(stale);
 
-console.log(`Restored. ${copied} photo files uploaded, ${stale.length} old ones removed.`);
+console.log(`Restored. ${copied} photo files uploaded, ${removed} old ones removed.`);

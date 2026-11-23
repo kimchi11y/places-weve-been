@@ -48,6 +48,35 @@ services:
     init: true
     restart: unless-stopped
 
+  # Run by docker/backup.sh and docker/restore.sh, not by `docker compose up`
+  backup: &tool
+    image: places-weve-been
+    profiles: [tools]
+    command: ["node", "dist-node/tools/backup.mjs"]
+    network_mode: none
+    environment:
+      BACKUP_DIR: /backups
+    volumes:
+      - data:/data:ro
+      - ./backups:/backups
+    healthcheck:
+      disable: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    init: true
+
+  restore:
+    <<: *tool
+    command: ["node", "dist-node/tools/restore.mjs"]
+    volumes:
+      - data:/data
+      - ./backups:/backups:ro
+
 volumes:
   # Your trips and photos. `docker compose down -v` deletes them for good.
   data:

@@ -75,3 +75,34 @@ export async function copyPhotos(from: PhotoStore, to: PhotoStore, keys: string[
 /** Every stored file of these photos. */
 export const photoKeys = (photoIds: string[]) =>
   photoIds.flatMap((id) => (Object.keys(PHOTO_SIZES) as PhotoSize[]).map((size) => photoKey(id, size)));
+
+/** Which of a backup's files are missing from the photos saved next to it. */
+export async function missingFiles(saved: PhotoStore, keys: string[]) {
+  const missing: string[] = [];
+  for (const key of keys) {
+    const file = await saved.get(key);
+    if (file) await file.body.cancel();
+    else missing.push(key);
+  }
+  return missing;
+}
+
+/** Puts a backup in place of everything there now. Say what will be lost, and ask, before calling this. */
+export async function replaceAll({ db, photos, saved, backup, concurrency, onFile }: {
+  db: AtlasDb;
+  photos: PhotoStore;
+  /** where the backup's photo files are */
+  saved: PhotoStore;
+  backup: BackupData;
+  concurrency?: number;
+  onFile?: (done: number, total: number) => void;
+}) {
+  const current = await exportData(db);
+  // New files first, then the database, then old files: a failure never leaves rows without photos.
+  const { copied } = await copyPhotos(saved, photos, photoKeys(backup.photos.map((p) => p.id)), { concurrency, onFile });
+  await importData(db, backup);
+  const keep = new Set(backup.photos.map((p) => p.id));
+  const stale = photoKeys(current.photos.map((p) => p.id).filter((id) => !keep.has(id)));
+  await photos.delete(stale);
+  return { copied, removed: stale.length };
+}

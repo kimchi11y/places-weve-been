@@ -8,4 +8,5 @@
 !public
 !migrations
 !scripts/check-photo-privacy.mjs
+!scripts/self-hosted
 **/.DS_Store

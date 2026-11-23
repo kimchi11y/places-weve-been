@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build && node scripts/check-photo-privacy.mjs",
-    "build:node": "TARGET=node astro build && node scripts/check-photo-privacy.mjs dist-node",
+    "build:node": "TARGET=node astro build && vite build --config scripts/self-hosted/vite.config.ts && node scripts/check-photo-privacy.mjs dist-node",
     "start:node": "node dist-node/server/entry.mjs",
     "preview": "astro preview",
     "check": "astro check",

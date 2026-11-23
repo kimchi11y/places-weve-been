@@ -12,7 +12,12 @@ import { createSqliteTripStore } from './sqlite';
 
 export async function openSqliteFile(url = 'file:data/atlas.db', options: { authToken?: string } = {}) {
   if (url.startsWith('file:')) await mkdir(path.dirname(url.slice('file:'.length)), { recursive: true });
-  const client = createClient({ url, authToken: options.authToken });
+  const client = createClient({
+    url,
+    authToken: options.authToken,
+    // Someone else may be saving, or a backup reading: wait a little instead of failing
+    timeout: 5000,
+  });
   // SQLite leaves foreign keys off unless asked, each time it opens; D1 always has them on.
   await client.execute('PRAGMA foreign_keys = ON');
   const db = drizzle(client, { schema });
