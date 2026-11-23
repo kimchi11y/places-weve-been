@@ -139,6 +139,22 @@ describe('photos', () => {
     expect((await store.getTrips({ drafts: true })).map((t) => t.id)).toEqual(['jeju-island-2025', 'seoul-2023']);
   });
 
+  it('reorders stops without touching their photos', async () => {
+    const trip = await tripWithPhotos();
+    const { trip: saved, removedPhotoIds } = await store.saveTrip(trip.id, edit(trip, [...trip.stops].reverse().map((s) => ({ ...stop(s.name), id: s.id }))));
+    expect(saved.stops.map((s) => [s.name, s.photos.length])).toEqual([['Seogwipo', 1], ['Jeju City', 3]]);
+    expect(removedPhotoIds).toEqual([]);
+  });
+
+  it('changes nothing when a save is refused', async () => {
+    const trip = await tripWithPhotos();
+    expect(await errorsOf(store.saveTrip(trip.id, edit(trip, [{ ...stop('New name'), id: 'deleted-elsewhere' }], { title: 'Changed' })))).toEqual([
+      'New name: this stop was deleted elsewhere. Reload and try again.',
+    ]);
+    expect(await errorsOf(store.saveTrip(trip.id, edit(trip, [], { coverPhotoId: 'falls' })))).toEqual(["The cover photo isn't in this trip any more."]);
+    expect(await store.getTrip(trip.id)).toEqual(trip);
+  });
+
   it('deleting a trip returns all its photo ids', async () => {
     const trip = await tripWithPhotos();
     expect((await store.deleteTrip(trip.id)).sort()).toEqual(['earlier', 'falls', 'later', 'undated']);
