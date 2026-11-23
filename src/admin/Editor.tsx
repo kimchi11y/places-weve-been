@@ -523,10 +523,15 @@ function Coords({ lat, lng, onChange }: { lat: number; lng: number; onChange: (l
 function CountryPicker({ countries, value, onChange }: { countries: Country[]; value: string[]; onChange: (v: string[]) => void }) {
   const [text, setText] = useState('');
   const nameOf = (code: string) => countries.find((c) => c.code === code)?.name ?? code;
+  /** Picking from the list fills in "Vietnam (VN)"; someone still typing hasn't chosen yet ("vi" isn't the Virgin Islands). */
+  const type = (input: string) => {
+    setText(input);
+    if (/\([A-Z]{2}\)$/.test(input)) choose(input);
+  };
   const choose = (input: string) => {
     const q = input.trim().toLowerCase();
     const match = countries.find((c) => `${c.name} (${c.code})`.toLowerCase() === q || c.name.toLowerCase() === q || c.code.toLowerCase() === q);
-    if (!match) return setText(input);
+    if (!match) return;
     if (!value.includes(match.code)) onChange([...value, match.code]);
     setText('');
   };
@@ -543,7 +548,8 @@ function CountryPicker({ countries, value, onChange }: { countries: Country[]; v
         aria-label="Add a country"
         value={text}
         placeholder={value.length ? 'Add another…' : 'Start typing a country…'}
-        onChange={(e) => choose(e.target.value)}
+        onChange={(e) => type(e.target.value)}
+        onBlur={() => { if (text.trim().length > 2) choose(text); }}
         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); choose(text); } }}
       />
       <datalist id="country-list">

@@ -280,6 +280,19 @@ describe('labels', () => {
     expect(button('Remove Vietnam')).toBeTruthy();
   });
 
+  it('waits for the whole name, whatever codes or countries it starts with', async () => {
+    const { user } = await setup('Jeju');
+    const box = screen.getByRole('combobox', { name: 'Add a country' });
+    const chips = () => screen.getAllByRole('button', { name: /^Remove (?!stop)/ }).map((b) => b.getAttribute('aria-label'));
+    await user.type(box, 'vietnam{Enter}'); // starts with VI
+    await user.type(box, 'nigeria'); // starts with Niger
+    await user.tab();
+    await user.type(box, 'is{Enter}');
+    await user.type(box, 'in'); // half a word, not India
+    await user.tab();
+    expect(chips()).toEqual(['Remove South Korea', 'Remove Japan', 'Remove Vietnam', 'Remove Nigeria', 'Remove Iceland']);
+  });
+
   it('names the story box', async () => {
     await setup('Jeju');
     expect(screen.getByRole('textbox', { name: 'The full story' })).toBeTruthy();
