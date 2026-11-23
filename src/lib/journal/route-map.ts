@@ -15,15 +15,26 @@ export interface RouteData {
 const SVG = 'http://www.w3.org/2000/svg';
 const STICKER_W = 96, STICKER_H = 82;
 const SMALL_TRIP = 3; // degrees: a trip this tight needs the sharpest outlines
+const ONE_STOP = 3; // degrees of longitude to show around a trip with a single place
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
+
+/** A map projection that shows every stop, clear of the card's edges. */
+export function fitRoute(pts: [lng: number, lat: number][], W: number, H: number) {
+  const projection = geoMercator();
+  // One place has no extent to fit: the zoom would be infinite
+  if (pts.every((p) => p[0] === pts[0][0] && p[1] === pts[0][1])) {
+    return projection.center(pts[0]).translate([W / 2, H / 2]).scale(W / ((ONE_STOP * Math.PI) / 180));
+  }
+  const padX = Math.min(90, W * 0.2), padY = 92;
+  return projection.fitExtent([[padX, padY], [W - padX, H - padY]], { type: 'MultiPoint', coordinates: pts });
+}
 
 /** Draws into `box`; returns a function that moves the plane, in stops (0 → the last stop). */
 export function buildRouteMap(box: HTMLElement, route: RouteData) {
   box.replaceChildren();
   const W = box.clientWidth, H = box.clientHeight;
   const pts = route.stops.map((s): [number, number] => [s.lng, s.lat]);
-  const padX = Math.min(90, W * 0.2), padY = 92;
-  const projection = geoMercator().fitExtent([[padX, padY], [W - padX, H - padY]], { type: 'MultiPoint', coordinates: pts });
+  const projection = fitRoute(pts, W, H);
   const path = geoPath(projection);
   const xy = pts.map((p) => projection(p)!);
 
@@ -140,7 +151,7 @@ export function buildRouteMap(box: HTMLElement, route: RouteData) {
     reveal.setAttribute('stroke-dashoffset', String(total - len));
     const here = base.getPointAtLength(len);
     const ahead = base.getPointAtLength(Math.min(total, len + 1.5));
-    const behind = len >= total ? base.getPointAtLength(total - 1.5) : null;
+    const behind = total && len >= total ? base.getPointAtLength(total - 1.5) : null;
     const angle = behind ? Math.atan2(here.y - behind.y, here.x - behind.x) : Math.atan2(ahead.y - here.y, ahead.x - here.x);
     plane.setAttribute('transform', `translate(${here.x},${here.y}) rotate(${(angle * 180) / Math.PI})`);
     const now = Math.round(p);

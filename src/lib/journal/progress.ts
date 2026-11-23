@@ -78,11 +78,9 @@ export function startProgress(article: HTMLElement) {
       if (i === now) a.setAttribute('aria-current', 'true');
       else a.removeAttribute('aria-current');
     });
-    if (n > 1) {
-      const x = x0 + (x1 - x0) * (p / (n - 1));
-      plane.style.left = `${x}px`;
-      done.style.width = `${x - x0}px`;
-    }
+    const x = n > 1 ? x0 + (x1 - x0) * (p / (n - 1)) : x0;
+    plane.style.left = `${x}px`;
+    done.style.width = `${x - x0}px`;
     // Keep the current stop visible on a long route, once the page has settled
     clearTimeout(settle);
     settle = window.setTimeout(() => {
