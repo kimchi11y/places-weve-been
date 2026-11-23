@@ -108,3 +108,45 @@ describe('keys', () => {
     expect(globe.focus).toHaveBeenLastCalledWith(jeju, 1);
   });
 });
+
+describe('the globe while searching', () => {
+  const closings: [string, (user: ReturnType<typeof userEvent.setup>) => Promise<void>][] = [
+    ['Escape', (user) => user.keyboard('{Escape}')],
+    ['the close button', (user) => user.click(screen.getByRole('button', { name: 'Close search' }))],
+    ['a click outside', (user) => user.click(document.querySelector('.palette-bg')!)],
+  ];
+  it.each(closings)('turns again after closing with %s', async (_, close) => {
+    const { user } = setup();
+    await user.keyboard('/');
+    expect(globe.peek).toHaveBeenLastCalledWith(jeju);
+    globe.unpeek.mockClear();
+    await close(user);
+    expect(globe.unpeek).toHaveBeenCalled();
+  });
+
+  it('turns again even if the window got narrow or scrolled meanwhile', async () => {
+    const { user } = setup();
+    await user.keyboard('/');
+    globe.unpeek.mockClear();
+    vi.stubGlobal('innerWidth', 400);
+    vi.stubGlobal('scrollY', 5000);
+    await user.keyboard('{Escape}');
+    expect(globe.unpeek).toHaveBeenCalled();
+  });
+
+  it('stays still on phones', async () => {
+    vi.stubGlobal('innerWidth', 400);
+    const { user } = setup();
+    await user.keyboard('/');
+    expect(globe.peek).not.toHaveBeenCalled();
+  });
+
+  it('stays held when search closes back onto the trip picker', async () => {
+    const { user } = setup();
+    act(() => globe.options.onCluster([jeju, hanoi]));
+    await user.keyboard('/');
+    await user.keyboard('{Escape}');
+    expect(globe.hold).toHaveBeenLastCalledWith(true);
+    expect(globe.hold.mock.invocationCallOrder.at(-1)!).toBeGreaterThan(globe.unpeek.mock.invocationCallOrder.at(-1) ?? 0);
+  });
+});

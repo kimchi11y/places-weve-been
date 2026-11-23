@@ -83,9 +83,10 @@ export default function GlobeExplorer({ trips, stats }: Props) {
   }
 
   const peek = (t: Trip | null) => {
-    if (innerWidth < WIDE || scrollY > innerHeight / 2) return;
-    if (t) globeRef.current?.peek(t);
-    else globeRef.current?.unpeek();
+    if (!t) {
+      globeRef.current?.unpeek();
+      if (picker) globeRef.current?.hold(true);
+    } else if (innerWidth >= WIDE && scrollY <= innerHeight / 2) globeRef.current?.peek(t);
   };
 
   const goToShelf = () => shelfRef.current?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
@@ -229,7 +230,7 @@ export default function GlobeExplorer({ trips, stats }: Props) {
       </nav>
 
       <TripSheet trip={trip} stop={stop} picker={picker} onStop={showStop} onPick={open} onClose={close} />
-      <SearchPalette trips={trips} open={searching} onClose={() => { setSearching(false); peek(null); }} onPick={open} onPeek={peek} />
+      <SearchPalette trips={trips} open={searching} onClose={() => setSearching(false)} onPick={open} onPeek={peek} />
     </>
   );
 }

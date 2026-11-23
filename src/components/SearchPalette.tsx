@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { searchTrips, splitMatch } from '../lib/search';
 import type { Trip } from '../lib/types';
@@ -58,11 +58,14 @@ export default function SearchPalette({ trips, open, onClose, onPick, onPeek }: 
     return () => clearTimeout(timer);
   }, [open]);
 
-  // turn the globe toward whatever is highlighted
+  // turn the globe toward whatever is highlighted, and let it go on turning once this closes
+  const peek = useEffectEvent(onPeek);
+  const highlighted = open ? current?.trip : undefined;
   useEffect(() => {
-    if (open) onPeek(current?.trip ?? null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, current?.trip]);
+    if (!open) return;
+    peek(highlighted ?? null);
+    return () => peek(null);
+  }, [open, highlighted]);
 
   const pick = (i: number) => {
     const h = hits[i];
