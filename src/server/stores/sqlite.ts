@@ -147,6 +147,15 @@ export function createSqliteTripStore(db: AtlasDb): TripStore {
       return row;
     },
 
+    async isPhotoPublished(id) {
+      const rows = await db
+        .select({ id: photos.id })
+        .from(photos)
+        .innerJoin(trips, eq(trips.id, photos.tripId))
+        .where(and(eq(photos.id, id), eq(trips.draft, false)));
+      return rows.length > 0;
+    },
+
     async removePhoto(id) {
       await run([
         db.update(trips).set({ coverPhotoId: null }).where(eq(trips.coverPhotoId, id)),

@@ -22,6 +22,8 @@ export interface TripStore {
   deleteTrip(id: string): Promise<string[]>;
   /** Records a photo whose files are already in the photo store under the returned id. */
   addPhoto(tripId: string, stopId: string, photo: NewPhoto & { id: string }): Promise<PhotoRow>;
+  /** Whether the photo belongs to a trip that's on the site, not a draft. */
+  isPhotoPublished(id: string): Promise<boolean>;
   removePhoto(id: string): Promise<void>;
 }
 
