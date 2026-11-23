@@ -33,6 +33,14 @@ describe('trips', () => {
     expect(await store.listTrips({ drafts: true })).toHaveLength(1);
   });
 
+  it('takes names in any script', async () => {
+    const tokyo = await store.createTrip({ ...jeju, title: '東京' });
+    expect([tokyo.id, (await store.createTrip({ ...jeju, title: '大阪' })).id]).toEqual(['東京-2025', '大阪-2025']);
+    const { trip } = await store.saveTrip(tokyo.id, edit(tokyo, [stop('浅草'), stop('渋谷')]));
+    expect(trip.stops.map((s) => s.name)).toEqual(['浅草', '渋谷']);
+    expect(await errorsOf(store.saveTrip(tokyo.id, edit(tokyo, [stop('🏝️')])))).toEqual(['Stop 1 needs a name.']);
+  });
+
   it('explains what is wrong in plain words', async () => {
     const errors = await errorsOf(store.createTrip({ ...jeju, title: ' ', endDate: '2025-04-01', countries: ['XX'] }));
     expect(errors).toEqual(['The trip needs a title.', 'Unknown country code XX.', 'The trip ends before it starts.']);

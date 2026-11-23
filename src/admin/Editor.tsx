@@ -395,7 +395,7 @@ function StopCard({ index, count, trip, stop, edit, onMove, onRemove, onUpload, 
             value={stop.name}
             placeholder="e.g. Hallstatt"
             onChange={(e) => edit((s) => void (s.name = e.target.value))}
-            onBlur={() => edit((s) => void (s.code ||= slugify(s.name).replace(/-/g, '').slice(0, 3).toUpperCase()))}
+            onBlur={() => edit((s) => void (s.code ||= slugify(s.name).replace(/[^a-z0-9]/g, '').slice(0, 3).toUpperCase()))}
           />
         </Field>
         <Field label="Stamp code" hint="Up to 4 letters.">

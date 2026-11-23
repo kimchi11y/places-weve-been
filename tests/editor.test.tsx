@@ -131,6 +131,19 @@ describe('trip editor', () => {
     expect(box.value).toBe('16.0544, 108.2022');
   });
 
+  it('suggests a stamp code, when the name has letters for one', async () => {
+    const { user, container } = await setup('Jeju');
+    await user.click(button('+ Add a stop'));
+    const [name, code] = container.querySelectorAll<HTMLInputElement>('.stop ~ .stop input');
+    await user.type(name, '東京');
+    await user.tab();
+    expect(code.value).toBe('');
+    await user.clear(name);
+    await user.type(name, 'Łódź');
+    await user.tab();
+    expect(code.value).toBe('LOD');
+  });
+
   it('moves and removes stops', async () => {
     const { user } = await setup('Jeju');
     await user.click(button('+ Add a stop'));
