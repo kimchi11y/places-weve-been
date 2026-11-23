@@ -1,4 +1,5 @@
 import { forwardRef, useMemo, useState, type CSSProperties, type MouseEvent } from 'react';
+import { carryPhoto } from '../lib/carry-photo';
 import { plural } from '../lib/format';
 import type { Trip } from '../lib/types';
 import { Icon, Sticker } from './icons';
@@ -22,10 +23,7 @@ function countriesOf(trips: Trip[]) {
 /** A second photo for a card: the first that isn't the cover. */
 const otherPhoto = (t: Trip) => t.stops.flatMap((s) => s.photos).find((p) => p.src !== t.cover.src) ?? t.cover;
 
-/** The photo carries over to the journal's cover as the page changes. */
-function carryPhoto(e: MouseEvent<HTMLAnchorElement>) {
-  e.currentTarget.querySelector<HTMLElement>('[data-carry]')?.style.setProperty('view-transition-name', 'vt-cover');
-}
+const carryCover = (e: MouseEvent<HTMLAnchorElement>) => carryPhoto(e.currentTarget.querySelector<HTMLElement>('[data-carry]'));
 
 export default forwardRef<HTMLElement, { trips: Trip[] }>(function Journals({ trips }, ref) {
   const [country, setCountry] = useState<string | null>(null);
@@ -54,7 +52,7 @@ export default forwardRef<HTMLElement, { trips: Trip[] }>(function Journals({ tr
             </div>
             <div className="folders" style={{ '--n': Math.min(MAX_TABS, list.length) } as CSSProperties}>
               {list.map((t, i) => (
-                <a key={t.id} className="folder" href={`/trips/${t.id}`} onClick={carryPhoto}
+                <a key={t.id} className="folder" href={`/trips/${t.id}`} onClick={carryCover}
                   style={{ '--t': t.ink, '--tint': t.tint, '--i': i % MAX_TABS } as CSSProperties}>
                   <h3 className="tab"><Icon name="pin" /><span>{t.title}</span> <i className="ink-small">{t.year}</i></h3>
                   <span className="f-days">{plural(t.days, 'day')}</span>

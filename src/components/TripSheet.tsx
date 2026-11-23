@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react';
+import { carryPhoto } from '../lib/carry-photo';
 import { pad, plural } from '../lib/format';
 import type { Trip } from '../lib/types';
 import { Icon } from './icons';
@@ -127,7 +128,7 @@ export default function TripSheet({ trip, stop, picker, onStop, onPick, onClose 
             </ol>
           </div>
           <div className="sh-foot">
-            <a className="cta" href={`/trips/${shown.id}`} onClick={() => { if (photoRef.current) photoRef.current.style.viewTransitionName = 'vt-cover'; }}>
+            <a className="cta" href={`/trips/${shown.id}`} onClick={() => carryPhoto(photoRef.current)}>
               Open the journal <span className="arrow"><Icon name="arrow" /></span>
             </a>
             {shown.vlog && <a className="ghost vlog-link" href={shown.vlog} target="_blank" rel="noreferrer" aria-label={`Watch the ${shown.title} vlog`}><Icon name="play" /> Vlog</a>}
