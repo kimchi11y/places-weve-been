@@ -15,40 +15,59 @@ export function sniffType(bytes: Uint8Array): PhotoType | undefined {
   return undefined;
 }
 
-/** JPEG keeps EXIF and XMP in APP1 segments (and some cameras' extras in APP2–APP15). */
-function jpegHasMetadata(bytes: Uint8Array) {
+interface Segment { marker: number; start: number; end: number }
+
+/**
+ * The JPEG's segments, from just after its start marker up to and including its end marker;
+ * null when it isn't well-formed. A scan's segment includes the picture data that follows it,
+ * and a progressive JPEG has several scans, with room for other segments in between.
+ */
+function jpegSegments(bytes: Uint8Array): Segment[] | null {
+  const segments: Segment[] = [];
   let i = 2;
-  while (i + 4 <= bytes.length) {
-    if (bytes[i] !== 0xff) return true; // not a well-formed file: don't trust it
+  while (i + 2 <= bytes.length) {
+    const start = i;
+    if (bytes[i] !== 0xff) return null;
+    while (bytes[i + 1] === 0xff) i++; // padding before a marker
     const marker = bytes[i + 1];
-    if (marker === 0xda) return false; // start of the image data: no more headers
-    if (marker >= 0xe1 && marker <= 0xef) return true;
-    i += 2 + ((bytes[i + 2] << 8) | bytes[i + 3]);
+    if (marker === 0xd9) {
+      segments.push({ marker, start, end: i + 2 });
+      return segments;
+    }
+    if (i + 4 > bytes.length) return null;
+    const length = (bytes[i + 2] << 8) | bytes[i + 3];
+    if (length < 2) return null;
+    i += 2 + length;
+    if (marker === 0xda) {
+      // Picture data runs to the next real marker: FF00 is a plain FF, FFD0–FFD7 are restarts
+      while (i + 1 < bytes.length && !(bytes[i] === 0xff && bytes[i + 1] !== 0 && !(bytes[i + 1] >= 0xd0 && bytes[i + 1] <= 0xd7))) i++;
+    }
+    segments.push({ marker, start, end: i });
   }
-  return true;
+  return null;
+}
+
+/** JPEG keeps EXIF and XMP in APP1 segments, some cameras' extras in APP2–APP15, and comments in COM. */
+const isMetadata = ({ marker }: Segment) => (marker >= 0xe1 && marker <= 0xef) || marker === 0xfe;
+
+function jpegHasMetadata(bytes: Uint8Array) {
+  const segments = jpegSegments(bytes);
+  if (!segments) return true; // not a well-formed file: don't trust it
+  return segments.some(isMetadata) || segments.at(-1)!.end !== bytes.length;
 }
 
 /**
- * The same JPEG without those segments. Safari writes a small EXIF and Photoshop segment into
- * every JPEG it makes from a canvas, so the editor removes them before uploading. A file that
- * isn't well-formed comes back unchanged, for the check above to refuse.
+ * The same JPEG without those segments, or anything after its end. Safari writes a small EXIF
+ * and Photoshop segment into every JPEG it makes from a canvas, so the editor removes them
+ * before uploading. A file that isn't well-formed comes back unchanged, for the check above to refuse.
  */
 export function stripJpegMetadata(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
-  const kept: Uint8Array[] = [bytes.subarray(0, 2)];
-  let i = 2;
-  while (i + 4 <= bytes.length && bytes[i] === 0xff) {
-    const marker = bytes[i + 1];
-    if (marker === 0xda) {
-      kept.push(bytes.subarray(i));
-      const out = new Uint8Array(kept.reduce((n, part) => n + part.length, 0));
-      kept.reduce((at, part) => (out.set(part, at), at + part.length), 0);
-      return out;
-    }
-    const end = i + 2 + ((bytes[i + 2] << 8) | bytes[i + 3]);
-    if (marker < 0xe1 || marker > 0xef) kept.push(bytes.subarray(i, end));
-    i = end;
-  }
-  return bytes.slice();
+  const segments = jpegSegments(bytes);
+  if (!segments) return bytes.slice();
+  const kept = [bytes.subarray(0, 2), ...segments.filter((s) => !isMetadata(s)).map((s) => bytes.subarray(s.start, s.end))];
+  const out = new Uint8Array(kept.reduce((n, part) => n + part.length, 0));
+  kept.reduce((at, part) => (out.set(part, at), at + part.length), 0);
+  return out;
 }
 
 /** WebP keeps them in "EXIF" and "XMP " chunks. */
@@ -57,7 +76,7 @@ function webpHasMetadata(bytes: Uint8Array) {
   while (i + 8 <= bytes.length) {
     const chunk = ascii(bytes, i, 4);
     if (chunk === 'EXIF' || chunk === 'XMP ') return true;
-    const size = bytes[i + 4] | (bytes[i + 5] << 8) | (bytes[i + 6] << 16) | (bytes[i + 7] << 24);
+    const size = (bytes[i + 4] | (bytes[i + 5] << 8) | (bytes[i + 6] << 16) | (bytes[i + 7] << 24)) >>> 0;
     i += 8 + size + (size % 2);
   }
   return i !== bytes.length;
