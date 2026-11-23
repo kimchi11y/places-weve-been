@@ -34,7 +34,7 @@ Open **/admin** on your site (or http://localhost:4321/admin while `npm run dev`
 
 - start a trip (it begins as a **draft**, hidden from the site until you tick *Show on the site*)
 - add, reorder and remove stops, with their story, date and map position
-- drag photos onto a stop, from a phone or a computer. Each is turned upright, resized and re-drawn in your browser before it's sent, which leaves its GPS location and other hidden details behind. iPhone HEIC photos work in every browser
+- drag photos onto a stop, from a phone or a computer. Each is turned upright, resized and re-drawn in your browser before it's sent, which leaves its GPS location and other hidden details behind. iPhone and Android photos work, including HEIC in every browser
 - star a stop's postcard photos (otherwise its first three are used) and pick the cover
 
 Saved changes show on the site straight away. Only the people listed in `EDITORS` can open the editor; everyone else who can see the site just sees the trips.
@@ -94,7 +94,7 @@ If something is missing or mistyped (a wrong country code, an end date before th
 
 ## Deploying
 
-The site runs on Cloudflare's free plan. (Have your own server? See [self-hosting with Docker and Tailscale](docs/self-hosting.md).) You'll need a Cloudflare account and your copy of this repository on GitHub.
+The site runs on Cloudflare's free plan. (Have your own server? See [self-hosting with Docker and Tailscale](docs/self-hosting.md).) You'll need a Cloudflare account and your own fork of this repository on GitHub.
 
 ### 1. Create the database and photo storage
 
@@ -175,6 +175,15 @@ npm run restore -- backups/2026-11-06-1430
 
 If you ever need to put a backup back online, add `--remote`. It **replaces everything on your live site**, shows you what's there now and asks you to type `replace` first. Try the backup locally before you do.
 
+## Updating
+
+Your site keeps running the version you installed until you update it. To hear about new versions, choose **Watch → Custom → Releases** on this repository. Read the release's notes and make a backup first.
+
+- **Cloudflare:** if your copy is a fork, press **Sync fork** on its GitHub page. If Cloudflare deploys from it (step 2 above), your site updates by itself. If it isn't a fork, add this repository as a second remote and merge its `main`.
+- **Docker:** see [Update](docs/self-hosting.md#update).
+
+`main` holds released work and `develop` what's coming next, so run your site from `main`. An update can change the database, and going back to older code doesn't undo that. The backup does.
+
 ## Project layout
 
 | Path | What it is |
@@ -200,6 +209,10 @@ If you ever need to put a backup back online, add `--remote`. It **replaces ever
 | `Dockerfile`, `compose.yaml`, `docker/` | [Self-hosting](docs/self-hosting.md) |
 | `seed/trips/` | The example trips, loaded by `npm run seed` |
 | `tests/` | `npm test` |
+
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md). Pull requests go into `develop`.
 
 ## Licence
 
