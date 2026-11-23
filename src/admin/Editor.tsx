@@ -436,9 +436,6 @@ function StopCard({ index, count, trip, stop, edit, onMove, onRemove, onUpload, 
         <Field label="Postcard story" wide>
           <textarea rows={3} value={stop.story} onChange={(e) => edit((s) => void (s.story = e.target.value))} />
         </Field>
-        <Field label="Handwritten notes" hint="Optional. One per line; they fill gaps in the photo wall." wide>
-          <textarea rows={2} value={stop.notes.join('\n')} onChange={(e) => edit((s) => void (s.notes = e.target.value.split('\n')))} />
-        </Field>
       </div>
 
       <div

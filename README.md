@@ -33,7 +33,7 @@ Nothing personal lives in this repository. `npm run dev` simulates D1 and R2 on 
 Open **/admin** on your site (or http://localhost:4321/admin while `npm run dev` runs). From there you can:
 
 - start a trip (it begins as a **draft**, hidden from the site until you tick *Show on the site*)
-- add, reorder and remove stops, with their story, notes, date and map position
+- add, reorder and remove stops, with their story, date and map position
 - drag photos onto a stop, from a phone or a computer. Each is turned upright, resized and re-drawn in your browser before it's sent, which leaves its GPS location and other hidden details behind. iPhone HEIC photos work in every browser
 - star a stop's postcard photos (otherwise its first three are used) and pick the cover
 
