@@ -16,7 +16,7 @@ const jeju = exampleTrip('jeju', 'Jeju', ['Seogwipo', 'Seongsan']);
 const hanoi = exampleTrip('hanoi', 'Hanoi', ['Lake']);
 const setup = (url = '/') => {
   history.replaceState(null, '', url);
-  const view = render(<GlobeExplorer trips={[jeju, hanoi]} stats={{ trips: 2, countries: 1, days: 10 }} />);
+  const view = render(<GlobeExplorer trips={[jeju, hanoi]} stats={{ trips: 2, countries: 1, days: 10 }} canEdit={false} />);
   return { ...view, user: userEvent.setup() };
 };
 const sheet = () => document.querySelector<HTMLElement>('.sheet')!;
@@ -76,6 +76,25 @@ describe('opening trips', () => {
     await user.keyboard('{Escape}');
     expect(globe.hold).toHaveBeenLastCalledWith(false);
     expect(isOpen()).toBe(false);
+  });
+});
+
+describe('a site without trips', () => {
+  const empty = (canEdit: boolean) => render(<GlobeExplorer trips={[]} stats={{ trips: 0, countries: 0, days: 0 }} canEdit={canEdit} />);
+
+  it('points only editors to the editor', () => {
+    history.replaceState(null, '', '/');
+    empty(false).unmount();
+    expect(screen.queryByRole('link', { name: 'trip editor' })).toBeNull();
+    empty(true);
+    expect(screen.getByRole('link', { name: 'trip editor' })).toBeTruthy();
+  });
+
+  it('tells everyone else there’s nothing yet', () => {
+    history.replaceState(null, '', '/');
+    empty(false);
+    expect(screen.getByText('No trips here yet.')).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'trip editor' })).toBeNull();
   });
 });
 

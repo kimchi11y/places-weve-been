@@ -2,7 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 import GlobeExplorer from '../components/GlobeExplorer';
 import { loadTrips, tripStats } from '../lib/trips';
-import { tripStore } from '../server/runtime';
+import { canEdit, tripStore } from '../server/runtime';
 import '../styles/home.css';
 
 const trips = await loadTrips(tripStore());
@@ -38,5 +38,5 @@ const opening = trips.slice(0, 3).map((t) => t.cover.tile);
       setTimeout(done, 2800);
     })();
   </script>
-  <GlobeExplorer client:load trips={trips} stats={tripStats(trips)} />
+  <GlobeExplorer client:load trips={trips} stats={tripStats(trips)} canEdit={canEdit(Astro.locals.viewer)} />
 </Layout>

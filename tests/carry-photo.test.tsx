@@ -16,7 +16,7 @@ function setup() {
   document.addEventListener('click', (e) => e.preventDefault()); // stay on this page, as Back would
   render(
     <>
-      <Journals trips={[jeju, hanoi]} />
+      <Journals trips={[jeju, hanoi]} canEdit={false} />
       <TripSheet trip={jeju} stop={0} picker={null} onStop={vi.fn()} onPick={vi.fn()} onClose={vi.fn()} />
     </>,
   );
