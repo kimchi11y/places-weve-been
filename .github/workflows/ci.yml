@@ -1,5 +1,5 @@
 # Checks every push and pull request: types, tests, and a full build
-# (which also fails if a built photo still has its GPS location).
+# (which also fails if a built photo still has its GPS location), and the Docker image.
 name: CI
 
 on:
@@ -23,3 +23,11 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: npm run build
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: cp .env.example .env && docker compose config -q
+      - run: docker build -t places-weve-been .
+      - run: scripts/check-docker-image.sh places-weve-been
