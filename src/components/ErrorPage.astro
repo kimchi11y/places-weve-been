@@ -1,0 +1,32 @@
+---
+// What visitors see instead of a page: a postcard that came back. Needs nothing from the stores, so it works when they don't.
+import Layout from '../layouts/Layout.astro';
+import Icon from './journal/Icon.astro';
+import Sticker from './journal/Sticker.astro';
+import '../styles/error.css';
+
+interface Props {
+  code: number;
+  title: string;
+  /** the last words of the heading, in ink */
+  ending: string;
+  sticker: string;
+  /** "again" for what may work on a second try, "home" for what won't */
+  go?: 'home' | 'again';
+}
+const { code, title, ending, sticker, go = 'home' } = Astro.props;
+---
+
+<Layout title={`${title} ${ending}`} description="Places we’ve been">
+  <main class="lost">
+    <section class="card">
+      <span class="tape" aria-hidden="true"></span>
+      <span class="stamp-wrap" aria-hidden="true"><span class="stamp"><span class="stamp-face"><Sticker name={sticker} /><b>{code}</b></span></span></span>
+      <h1>{title} <em class="i">{ending}</em></h1>
+      <div class="why"><slot /></div>
+      {go === 'home'
+        ? <a class="cta" href="/">Back to the globe<span class="arrow"><Icon name="globe" /></span></a>
+        : <a class="cta" href="">Try again<span class="arrow"><Icon name="arrow" /></span></a>}
+    </section>
+  </main>
+</Layout>

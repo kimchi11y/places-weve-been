@@ -15,7 +15,14 @@ declare module 'cloudflare:workers' {
 }
 
 declare namespace App {
+  /** Why the middleware turned a request away */
+  interface Refusal {
+    reason: 'setup' | 'sign-in' | 'editors';
+    status: 403 | 503;
+    message: string;
+  }
   interface Locals {
     viewer: import('./server/auth/viewer').Viewer | null;
+    refusal?: Refusal;
   }
 }

@@ -19,7 +19,7 @@ import '../../styles/journal.css';
 
 const store = tripStore();
 const trip = await store.getTrip(Astro.params.id!);
-if (!trip || trip.draft) return new Response('Not found', { status: 404 });
+if (!trip || trip.draft) return new Response(null, { status: 404 });
 
 const story = await storyHtml(trip.story);
 const youtubeId = trip.vlog?.match(/(?:youtu\.be\/|v=|embed\/)([\w-]{11})/)?.[1];

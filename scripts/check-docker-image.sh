@@ -33,6 +33,11 @@ start -e AUTH=tailscale
 expect 403 /
 expect 200 / gran@example.com
 expect 403 /admin gran@example.com
+expect 404 /nowhere gran@example.com
+expect 404 /trips/nowhere gran@example.com
+expect 404 /refused gran@example.com
+expect 403 /nowhere
+expect 403 /refused
 expect 200 /admin ana@example.com
 expect 200 /admin/api/trips ana@example.com
 docker run --rm --network none --tmpfs /backups:mode=1777 -v "$name:/data:ro" -e BACKUP_DIR=/backups "$image" node dist-node/tools/backup.mjs
