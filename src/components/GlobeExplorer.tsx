@@ -228,6 +228,7 @@ export default function GlobeExplorer({ trips, stats, canEdit }: Props) {
         <button onClick={() => setSearching(true)} aria-haspopup="dialog">
           <Icon name="search" /><span>Search</span>{shortcut && <kbd>{shortcut}</kbd>}
         </button>
+        {canEdit && <a className="tab-edit" href="/admin"><Icon name="pencil" /><span>Edit</span></a>}
       </nav>
 
       <TripSheet trip={trip} stop={stop} picker={picker} onStop={showStop} onPick={open} onClose={close} />

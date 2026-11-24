@@ -83,6 +83,10 @@ html.locked { overflow: hidden; }
 .tabs .on { background: var(--paper); color: var(--ink); }
 .tabs :focus-visible { outline-color: var(--paper); }
 .tabs kbd { display: none; font: 700 11px var(--sans); padding: 1px 6px; border-radius: 6px; border: 1.5px solid currentColor; opacity: .65; }
+/* four across don't fit a phone side by side, so each icon goes above its word */
+@media (max-width: 479px) {
+  .tabs:has(.tab-edit) :is(a, button) { flex-direction: column; gap: 1px; min-width: 60px; padding: 0 9px; font-size: 12px; line-height: 1.2; }
+}
 .sheet-open .tabs, .search-open .tabs { transform: translateY(130px); opacity: 0; pointer-events: none; }
 
 /* ---------- journals ---------- */

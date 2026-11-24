@@ -79,6 +79,18 @@ describe('opening trips', () => {
   });
 });
 
+describe('the Edit button', () => {
+  const show = (canEdit: boolean) => render(<GlobeExplorer trips={[jeju]} stats={{ trips: 1, countries: 1, days: 5 }} canEdit={canEdit} />);
+
+  it('takes editors to the editor, and nobody else sees it', () => {
+    history.replaceState(null, '', '/');
+    show(false).unmount();
+    expect(screen.queryByRole('link', { name: 'Edit' })).toBeNull();
+    show(true);
+    expect(screen.getByRole('link', { name: 'Edit' }).getAttribute('href')).toBe('/admin');
+  });
+});
+
 describe('a site without trips', () => {
   const empty = (canEdit: boolean) => render(<GlobeExplorer trips={[]} stats={{ trips: 0, countries: 0, days: 0 }} canEdit={canEdit} />);
 
