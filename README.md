@@ -30,7 +30,7 @@ Nothing personal lives in this repository. `npm run dev` simulates D1 and R2 on 
 
 ## The trip editor
 
-Open **/admin** on your site (or http://localhost:4321/admin while `npm run dev` runs). From there you can:
+Choose **Edit** on the home page, or open **/admin** on your site (http://localhost:4321/admin while `npm run dev` runs). From there you can:
 
 - start a trip (it begins as a **draft**, hidden from the site until you tick *Show on the site*)
 - add, reorder and remove stops, with their story, date and map position

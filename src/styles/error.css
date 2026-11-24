@@ -1,0 +1,22 @@
+/* The error pages: one postcard in the middle of the page. */
+.lost { display: grid; place-items: center; min-height: 100svh; padding: calc(var(--safe-t) + 32px) var(--gutter-r) calc(var(--safe-b) + 32px) var(--gutter-l); }
+.lost .card { position: relative; width: min(100%, 540px); padding: 36px 24px 24px; border-radius: 22px; background: var(--card); box-shadow: var(--lift-hi); }
+.lost .tape { left: 50%; top: -11px; translate: -50% 0; rotate: -3deg; }
+.lost .stamp-wrap { float: right; width: 92px; margin: 0 0 12px 12px; rotate: 6deg; }
+.lost .stamp-face { place-items: center; background: var(--ocean); }
+.lost .stamp-face .st { margin-bottom: 12px; }
+.lost h1 { font-size: clamp(38px, 10vw, 58px); }
+.lost h1 em.i { font-size: 1.08em; }
+.lost .why { margin: 16px 0 28px; color: var(--ink-soft); }
+.lost .why p + p { margin-top: 10px; }
+.lost .why b { color: var(--ink); overflow-wrap: anywhere; }
+.lost .cta { clear: both; }
+
+/* too narrow for the heading to sit beside the stamp */
+@media (max-width: 399px) {
+  .lost .stamp-wrap { float: none; margin: 0 0 20px; rotate: -4deg; }
+}
+@media (min-width: 640px) {
+  .lost .card { padding: 44px 40px 36px; rotate: -1deg; }
+  .lost .stamp-wrap { width: 116px; }
+}
