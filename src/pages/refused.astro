@@ -1,0 +1,27 @@
+---
+// Shown in place of a page the middleware turned someone away from, at that page's own address.
+import ErrorPage from '../components/ErrorPage.astro';
+
+const { refusal, viewer } = Astro.locals;
+if (!refusal) return new Response(null, { status: 404 });
+Astro.response.status = refusal.status;
+Astro.response.headers.set('cache-control', 'no-store');
+---
+
+{refusal.reason === 'editors' && (
+  <ErrorPage code={refusal.status} title="This page is for" ending="editors" sticker="shades">
+    <p>You don’t have access to the trip editor. You’re signed in as <b>{viewer?.email}</b>, and can still see every trip.</p>
+    <p>Should you be able to edit? Ask whoever runs this site to add you.</p>
+  </ErrorPage>
+)}
+{refusal.reason === 'sign-in' && (
+  <ErrorPage code={refusal.status} title="Please" ending="sign in" sticker="heart" go="again">
+    <p>These trips are only for family and friends, and we couldn’t tell who you are.</p>
+    <p>Sign in the way you were invited, then try again.</p>
+  </ErrorPage>
+)}
+{refusal.reason === 'setup' && (
+  <ErrorPage code={refusal.status} title="Still" ending="packing" sticker="cam" go="again">
+    <p>{refusal.message}</p>
+  </ErrorPage>
+)}

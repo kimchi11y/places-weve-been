@@ -15,8 +15,10 @@ async function visit(path: string, { method = 'GET', headers = {} as Record<stri
   const request = new Request(`https://atlas.example${path}`, { method, headers });
   const locals: Record<string, unknown> = {};
   const next = vi.fn(async () => new Response('the page'));
-  const response = (await onRequest({ url: new URL(request.url), request, locals } as never, next)) as Response;
-  return { status: response.status, body: await response.text(), let: next.mock.calls.length === 1, locals };
+  // Like pages/refused.astro, which takes its status from what the middleware left in locals
+  const rewrite = vi.fn(async (_to: string) => new Response('the refusal', { status: (locals.refusal as App.Refusal).status }));
+  const response = (await onRequest({ url: new URL(request.url), request, locals, rewrite } as never, next)) as Response;
+  return { status: response.status, type: response.headers.get('content-type'), body: await response.text(), let: next.mock.calls.length === 1, shown: rewrite.mock.calls[0]?.[0], locals };
 }
 
 beforeEach(() => Object.assign(site, { viewer: null, signIn: true }));
@@ -54,10 +56,25 @@ describe('who gets in', () => {
     expect(await visit('/administrator')).toMatchObject({ status: 200, let: true });
     expect(await visit('/admin?x=1')).toMatchObject({ status: 403, let: false });
   });
+});
 
-  it('escapes the email it shows', async () => {
-    site.viewer = { email: '<img src=x onerror=alert(1)>' };
-    expect((await visit('/admin')).body).not.toContain('<img');
+describe('what people who are turned away get', () => {
+  it('shows a page saying why, in place of a page', async () => {
+    expect(await visit('/')).toMatchObject({ shown: '/refused', locals: { refusal: { reason: 'sign-in' } } });
+    site.viewer = { email: 'grandma@example.com' };
+    expect(await visit('/admin')).toMatchObject({ shown: '/refused', locals: { refusal: { reason: 'editors' } } });
+    site.signIn = false;
+    expect(await visit('/')).toMatchObject({ shown: '/refused', locals: { refusal: { reason: 'setup' } } });
+  });
+
+  it('answers the editor’s requests and photos without a page', async () => {
+    expect(JSON.parse((await visit('/admin/api/trips')).body)).toEqual({ error: 'Please sign in to see this site.' });
+    expect(await visit('/photos/p1/full')).toMatchObject({ shown: undefined, type: 'text/plain; charset=utf-8' });
+    expect(await visit('/', { method: 'POST' })).toMatchObject({ status: 403, shown: undefined, let: false });
+  });
+
+  it('doesn’t let anyone in by asking for the refusal itself', async () => {
+    expect(await visit('/refused')).toMatchObject({ status: 403, let: false });
   });
 });
 
